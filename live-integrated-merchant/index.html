@@ -1,0 +1,1958 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live — integrated merchant (prototype)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --radius: 0;
+
+  --background: #fafafa;
+  --foreground: #2d2d29;
+  --card: #ffffff;
+  --card-foreground: #2d2d29;
+  --popover: #ffffff;
+  --popover-foreground: #2d2d29;
+
+  --primary: #ffff8c;
+  --primary-foreground: #2d2d29;
+  --accent: #00ffe9;
+  --accent-foreground: #2d2d29;
+
+  /* Cyan tone scale (from DS — for hierarchy in dense / repeated surfaces) */
+  --chart-cyan-100: #dffffb;
+  --chart-cyan-200: #9ffff7;
+  --chart-cyan-300: #00ffe9;
+
+  /* Yellow tone scale (from DS — for hierarchy / wallet stack depth) */
+  --chart-yellow-100: #fffde1;
+  --chart-yellow-200: #fff9b8;
+  --chart-yellow-300: #ffff8c;
+
+  /* Blue tone scale (from DS — used for "viewed page" / informational surfaces) */
+  --chart-blue-100: #e6f3fe;
+  --chart-blue-200: #c7e3fc;
+  --chart-blue-300: #a3d7fb;
+
+  /* Green tone scale (from DS — active/successful automation surfaces) */
+  --chart-green-100: #e0f2e3;
+  --chart-green-200: #aedab8;
+  --chart-green-300: #54b767;
+
+  --secondary: #f5f3f6;
+  --secondary-foreground: #2d2d29;
+  --muted: #f5f3f6;
+  --muted-foreground: #6b6b66;
+
+  --destructive: #fecacc;
+  --destructive-foreground: #7f2628;
+
+  --border: #e8e6e9;
+  --input: #e8e6e9;
+  --ring: #ffff8c;
+
+  --sidebar: #fffff5;
+  --sidebar-foreground: #2d2d29;
+
+  --chart-green-300: #54b767;
+  --chart-pink-400:  #e89aa0;
+  --chart-blue-300:  #a3d7fb;
+  --chart-purple-300:#a583d5;
+
+  --font-sans: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+  min-height: 100vh;
+}
+
+button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
+
+/* Yellow primary surfaces get a subtle dark outline */
+.btn-primary, .btn-primary:visited {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border: none;
+  outline: 1px solid rgb(0 0 0 / 0.18);
+  outline-offset: -1px;
+  transition: outline-color 150ms ease;
+}
+.btn-primary:hover { outline-color: rgb(0 0 0 / 0.5); }
+
+/* ===== LAYOUT ===== */
+.app {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+  background: linear-gradient(354deg, #ffff9c 10.94%, #fffff5 43.75%);
+  border-right: 1px solid var(--border);
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px 16px;
+  font-weight: 500;
+  font-size: 16px;
+}
+.brand-icon {
+  width: 20px; height: 20px;
+  background: #2d2d29;
+  display: inline-block;
+  margin-right: 6px;
+  border-radius: 0;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+  color: var(--foreground);
+  text-decoration: none;
+  border-radius: 0;
+  position: relative;
+}
+.nav-item:hover { background: rgba(255,255,255,0.6); }
+.nav-item.is-active {
+  background: rgba(255,255,255,0.85);
+  font-weight: 500;
+}
+.nav-item .nav-icon {
+  width: 16px; height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+.nav-item .nav-chevron { margin-left: auto; color: var(--muted-foreground); font-size: 11px; }
+.nav-badge {
+  margin-left: auto;
+  background: var(--primary);
+  outline: 1px solid rgb(0 0 0 / 0.18);
+  outline-offset: -1px;
+  font-size: 11px;
+  padding: 1px 6px;
+  font-weight: 500;
+}
+.workspace-card {
+  margin-top: auto;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--border);
+  padding: 10px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.workspace-card .ws-favicon {
+  width: 24px; height: 24px;
+  background: #fff;
+  border: 1px solid var(--border);
+  display: inline-block;
+  flex-shrink: 0;
+}
+.workspace-card .ws-name { color: var(--foreground); font-weight: 500; }
+.workspace-card .ws-id { color: var(--muted-foreground); font-size: 11px; }
+
+/* Main */
+.main {
+  padding: 0 32px 48px;
+  max-width: 1400px;
+}
+
+/* Top bar (search + icons) */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+.search {
+  flex: 1;
+  height: 36px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-foreground);
+  font-size: 14px;
+  max-width: 480px;
+}
+.topbar-icons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.icon-btn {
+  width: 36px; height: 36px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  color: var(--foreground);
+  font-size: 16px;
+}
+.icon-btn:hover { background: var(--secondary); }
+
+/* System status pill in top bar — DS Badge styling, no dark outline (outline only on yellow primary surfaces) */
+.sys-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  white-space: nowrap;
+  margin-right: 4px;
+  background: var(--chart-cyan-200);
+  color: var(--accent-foreground);
+  border: 1px solid var(--border);
+}
+.sys-status .ss-icon { font-weight: 500; font-size: 12px; }
+.sys-status.is-warning {
+  background: #fff9b8;
+  color: #5b4a00;
+  border-color: #e6e65e;
+}
+.sys-status.is-muted {
+  background: var(--secondary);
+  color: var(--muted-foreground);
+  border-color: var(--border);
+}
+.sys-status.is-paused {
+  background: var(--destructive);
+  color: var(--destructive-foreground);
+  border-color: #f8a0a4;
+}
+.icon-btn .dot-badge {
+  position: absolute;
+  top: -4px; right: -4px;
+  min-width: 16px; height: 16px;
+  padding: 0 4px;
+  background: var(--destructive);
+  outline: 1px solid rgb(0 0 0 / 0.18);
+  outline-offset: -1px;
+  color: var(--destructive-foreground);
+  font-size: 10px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Page header */
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.page-title {
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 500;
+  margin: 0;
+  letter-spacing: -0.5px;
+  position: relative;
+  min-height: 36px;
+  white-space: nowrap;
+}
+.page-title::after {
+  content: "|";
+  display: inline-block;
+  margin-left: 2px;
+  font-weight: 300;
+  color: var(--foreground);
+  animation: caret-blink 1s steps(2, end) infinite;
+  transform: translateY(-1px);
+}
+.page-title.is-done::after { display: none; }
+@keyframes caret-blink {
+  0%, 50%   { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-size: 12px;
+  font-weight: 500;
+  outline: 1px solid rgb(0 0 0 / 0.18);
+  outline-offset: -1px;
+}
+.badge.badge-muted {
+  background: var(--secondary);
+  outline: 1px solid var(--border);
+}
+.date-range {
+  margin-left: auto;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--foreground);
+}
+
+/* KPI strip */
+.kpi-section { margin-bottom: 28px; }
+.kpi-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  background: var(--card);
+  margin-bottom: 12px;
+}
+.kpi-toggle button {
+  height: 32px;
+  padding: 0 14px;
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--muted-foreground);
+  font-weight: 500;
+}
+.kpi-toggle button.is-active {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  outline: 1px solid rgb(0 0 0 / 0.18);
+  outline-offset: -1px;
+}
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.kpi-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 16px;
+}
+.kpi-label {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.kpi-value {
+  font-size: 28px;
+  line-height: 32px;
+  font-weight: 500;
+  color: var(--foreground);
+}
+.kpi-delta {
+  margin-top: 6px;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.kpi-delta.up { color: var(--chart-green-300); }
+.kpi-delta.down { color: var(--chart-pink-400); }
+.kpi-delta.flat { color: var(--muted-foreground); }
+
+/* Wallet stack */
+.wallet-section {
+  margin-bottom: 44px;  /* clearance for peek tails (peek3 = 36px) + small breathing gap to Right now */
+  position: relative;
+}
+/* One-time post-intro flash on the FRONT wallet card — same rhythm as the "just now" feed flash */
+.wallet-card.is-highlighted {
+  animation: walletCardGlow 2000ms ease forwards;
+}
+@keyframes walletCardGlow {
+  0%   { background-color: var(--card); }
+  10%  { background-color: #fffde1; }
+  30%  { background-color: #fffde1; }
+  100% { background-color: var(--card); }
+}
+.section-label {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.wallet {
+  position: relative;
+  height: 260px;
+}
+.wallet-card {
+  position: absolute;
+  inset: 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 22px 28px;
+  transition: transform 300ms cubic-bezier(0.32, 0.72, 0, 1),
+              opacity 240ms ease-out,
+              background-color 280ms ease-out;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.wallet-card .wc-eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted-foreground);
+  font-weight: 500;
+}
+.wallet-card .wc-headline {
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 500;
+  margin: 0;
+  letter-spacing: -0.2px;
+  max-width: 560px;
+}
+.wallet-card .wc-sub {
+  font-size: 13px;
+  color: var(--muted-foreground);
+  max-width: 520px;
+}
+.wallet-card .wc-actions {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Image / media slot for cards that include visuals */
+.wallet-card .wc-media {
+  position: absolute;
+  top: 22px;
+  right: 22px;
+  bottom: 22px;
+  width: 200px;
+  overflow: visible;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Lucky-wheel-style cards: photographic content needs the slot to clip its own image */
+.wallet-card .wc-media > img { overflow: hidden; }
+.wallet-card .wc-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.wallet-card.has-media .wc-eyebrow,
+.wallet-card.has-media .wc-headline,
+.wallet-card.has-media .wc-sub {
+  padding-right: 224px;
+}
+
+/* Inline expert avatar in eyebrow */
+.wc-eyebrow.with-avatar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.wc-eyebrow.with-avatar .uppercase {
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+.wc-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* CSS mockups inside wc-media */
+
+/* Rich reviews mockup — converted from the edrone product widget (Tailwind → vanilla) */
+.mock-reviews-card {
+  width: 178px;
+  background: #ffffff;
+  padding: 10px;
+  border-radius: 6px;
+  transform: rotate(3deg);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.06),
+    0 8px 20px -6px rgb(0 0 0 / 0.18);
+  font-family: var(--font-sans);
+  color: var(--foreground);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mock-reviews-card .mrc-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.mock-reviews-card .mrc-stars,
+.mock-reviews-card .mrc-mini-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+.mock-reviews-card .mrc-stars svg,
+.mock-reviews-card .mrc-mini-stars svg { display: block; }
+.mock-reviews-card .mrc-rating {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--foreground);
+  line-height: 1;
+}
+.mock-reviews-card .mrc-count {
+  font-size: 9px;
+  color: var(--muted-foreground);
+  line-height: 1;
+}
+.mock-reviews-card .mrc-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.mock-reviews-card .mrc-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 3px;
+  border: 1px solid #f2f2f2;
+}
+.mock-reviews-card .mrc-entry-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.mock-reviews-card .mrc-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 600;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.mock-reviews-card .mrc-avatar.is-emma { background: #ffe3cc; color: #b34700; }
+.mock-reviews-card .mrc-avatar.is-james { background: #e8f7ee; color: #2ba15b; }
+.mock-reviews-card .mrc-name-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.mock-reviews-card .mrc-name {
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--foreground);
+}
+.mock-reviews-card .mrc-verified {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  padding: 1px 4px;
+  background: #e8f7ee;
+  border-radius: 100px;
+  color: #2ba15b;
+  font-size: 7px;
+  font-weight: 500;
+  line-height: 1;
+}
+.mock-reviews-card .mrc-verified svg { width: 7px; height: 7px; display: block; }
+.mock-reviews-card .mrc-text {
+  font-size: 9px;
+  line-height: 1.3;
+  color: #545454;
+}
+.mock-reviews-card .mrc-skel {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.mock-reviews-card .mrc-skel-bar {
+  height: 4px;
+  border-radius: 100px;
+  background: #f2f2f2;
+}
+.mock-reviews-card .mrc-skel-bar.w100 { width: 100%; }
+.mock-reviews-card .mrc-skel-bar.w92 { width: 92%; }
+.mock-reviews-card .mrc-skel-bar.w75 { width: 75%; }
+
+.mock-chat {
+  width: 100%; height: 100%;
+  background: var(--chart-cyan-100);
+  display: flex;
+  align-items: flex-end;
+  padding: 10px;
+  position: relative;
+}
+.mock-chat .mc-bubble {
+  background: #fff;
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  font-size: 10px;
+  color: var(--foreground);
+  line-height: 14px;
+  max-width: 95%;
+}
+.mock-chat .mc-bubble.user {
+  margin-left: auto;
+  background: var(--primary);
+}
+.mock-chat .mc-head {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  font-size: 9px;
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mock-newsletter {
+  width: 100%; height: 100%;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+.mock-newsletter .nl-head {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  font-weight: 500;
+}
+.mock-newsletter .nl-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #fffde1, #fff9b8);
+  font-size: 22px;
+}
+.mock-newsletter .nl-cta {
+  text-align: center;
+  background: var(--primary);
+  font-size: 9px;
+  font-weight: 500;
+  padding: 6px;
+}
+
+/* Product photo support in live feed thumb */
+.feed-thumb.has-img { padding: 0; background: var(--card); }
+.feed-thumb.has-img img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Live ticker — new event slide-in (smooth height expand + fade) */
+@keyframes slideInTicker {
+  0%   { max-height: 0;     opacity: 0; transform: translateY(-6px); padding-top: 0;    padding-bottom: 0; border-bottom-width: 0; }
+  10%  { max-height: 0;     opacity: 0;                              padding-top: 0;    padding-bottom: 0; border-bottom-width: 0; }
+  60%  { max-height: 140px; opacity: 1; transform: translateY(0);    padding-top: 16px; padding-bottom: 16px; border-bottom-width: 1px; }
+  100% { max-height: 140px; opacity: 1; transform: translateY(0);    padding-top: 16px; padding-bottom: 16px; border-bottom-width: 1px; }
+}
+.feed-item.new-event {
+  animation: slideInTicker 650ms cubic-bezier(0.25, 0.8, 0.35, 1);
+  background: #eafbef;
+  transition: background 1400ms ease 900ms;
+  overflow: hidden;
+}
+.feed-item.new-event.cooled { background: transparent; }
+.wallet-card .wc-cta {
+  height: 40px;
+  padding: 0 18px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+}
+.wallet-card .wc-skip {
+  background: transparent;
+  border: none;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  font-family: inherit;
+}
+.wallet-card .wc-skip:hover { color: var(--foreground); }
+
+/* Stack states — original subtle version (opacity dropoff + scale, no bg shift) */
+.wallet-card[data-pos="front"] {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+  z-index: 4;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+}
+.wallet-card[data-pos="peek1"] {
+  transform: translateY(14px) scale(0.97);
+  opacity: 0.85;
+  z-index: 3;
+  cursor: pointer;
+}
+.wallet-card[data-pos="peek2"] {
+  transform: translateY(26px) scale(0.94);
+  opacity: 0.6;
+  z-index: 2;
+  cursor: pointer;
+}
+.wallet-card[data-pos="peek3"] {
+  transform: translateY(36px) scale(0.92);
+  opacity: 0.35;
+  z-index: 1;
+  cursor: pointer;
+}
+.wallet-card[data-pos="hidden"] {
+  transform: translateY(40px) scale(0.9);
+  opacity: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Soft white wash on peek cards to suggest depth/distance */
+.wallet-card[data-pos="peek1"]::after,
+.wallet-card[data-pos="peek2"]::after,
+.wallet-card[data-pos="peek3"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.5) 100%);
+  pointer-events: none;
+}
+
+.wallet-controls {
+  position: absolute;
+  right: 0;
+  top: -4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.wallet-controls .wc-pagination {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+.wallet-controls button {
+  width: 28px; height: 28px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  font-family: inherit;
+  font-size: 16px;
+  color: var(--foreground);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.wallet-controls button:hover { background: var(--secondary); }
+.wallet-controls button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* Main grid: aligned to the KPI strip (4 columns, 12px gap). Live feed spans first 2 KPI columns, wallet+right-now spans last 2. */
+.main-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+.left-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  grid-column: span 2;
+  order: 2;
+}
+.right-col {
+  min-width: 0;
+  grid-column: span 2;
+  order: 1;
+}
+
+.feed-section .section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.feed-section h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 500;
+}
+.feed-section .live-dot {
+  width: 8px; height: 8px;
+  background: var(--chart-pink-400);
+  border-radius: 50%;
+  display: inline-block;
+  animation: pulse 1.4s ease-in-out infinite;
+  margin-right: 4px;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+.feed-section .feed-meta {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.feed-item {
+  display: grid;
+  grid-template-columns: 96px 1fr auto;
+  gap: 14px;
+  padding: 16px 14px;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+}
+.feed-item:last-child { border-bottom: none; }
+.feed-thumb {
+  width: 96px; height: 96px;
+  background: var(--secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-foreground);
+  font-size: 28px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+}
+.feed-thumb.with-img { padding: 0; overflow: hidden; }
+.feed-thumb.is-home {
+  background: var(--chart-blue-100);
+  font-size: 0;
+}
+.feed-thumb.is-home svg {
+  width: 38px;
+  height: 38px;
+  color: var(--foreground);
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.feed-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.feed-line1 {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+.feed-event {
+  background: var(--secondary);
+  padding: 2px 8px;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+  color: var(--foreground);
+}
+.feed-event.evt-order { background: #e0f2e3; }
+.feed-event.evt-cart  { background: #fff9b8; }
+.feed-event.evt-view  { background: #f5f3f6; }
+.feed-event.evt-msg   { background: #eee5fa; }
+.feed-event.evt-home  { background: #e6f3fe; }
+.feed-line2 {
+  font-size: 14px;
+  color: var(--foreground);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.feed-line3 {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  display: flex; align-items: center; gap: 8px;
+}
+.automation-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #d3f8e2;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--foreground);
+  border: 1px solid var(--chart-green-200);
+}
+.feed-time {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Right now panel */
+.right-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 20px;
+  height: fit-content;
+}
+.right-panel h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 500;
+}
+.right-panel .rp-sub {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  margin-bottom: 16px;
+}
+.rp-live-count {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.rp-live-count .num {
+  font-size: 32px;
+  line-height: 1;
+  font-weight: 500;
+}
+.rp-live-count .label {
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+.rp-auto-title {
+  margin-top: 16px;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  letter-spacing: 0.6px;
+  margin-bottom: 10px;
+}
+.rp-auto-list { display: flex; flex-direction: column; gap: 12px; }
+.rp-auto-item {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  column-gap: 8px;
+  row-gap: 2px;
+  font-size: 13px;
+  align-items: start;
+}
+.rp-auto-item .dot {
+  width: 8px; height: 8px; background: var(--chart-green-300);
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 6px;
+}
+.rp-auto-item .rp-name {
+  font-weight: 500;
+  color: var(--foreground);
+  line-height: 18px;
+}
+.rp-auto-item .rp-metric {
+  grid-column: 2;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  line-height: 16px;
+}
+.rp-auto-item.muted .rp-name { color: var(--muted-foreground); font-weight: 400; }
+
+/* ===== Drawer ===== */
+.drawer-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.3);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+  z-index: 100;
+}
+.drawer-overlay.is-open { opacity: 1; pointer-events: auto; }
+
+.drawer {
+  position: fixed;
+  top: 0; right: 0;
+  width: 420px; height: 100vh;
+  background: var(--card);
+  border-left: 1px solid var(--border);
+  transform: translateX(100%);
+  transition: transform 240ms ease;
+  z-index: 101;
+  display: flex;
+  flex-direction: column;
+}
+.drawer.is-open { transform: translateX(0); }
+.drawer-head {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.drawer-head h3 { margin: 0; font-size: 16px; font-weight: 500; }
+.drawer-head .head-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.drawer-filter {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--foreground);
+}
+.drawer-mark {
+  background: transparent;
+  border: none;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-family: inherit;
+  padding: 4px 8px;
+}
+.drawer-mark:hover { color: var(--foreground); }
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 4px;
+}
+.drawer-empty {
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--muted-foreground);
+  display: none;
+}
+.drawer-entry {
+  padding: 14px 20px;
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  column-gap: 10px;
+  row-gap: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.drawer-entry .e-icon {
+  font-size: 14px;
+  color: var(--muted-foreground);
+}
+.drawer-entry.unread .e-icon { color: var(--chart-blue-300); }
+.drawer-entry.unread .e-icon::before { content: "●"; }
+.drawer-entry.read .e-icon::before { content: "○"; color: var(--border); }
+.drawer-entry .e-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--foreground);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.drawer-entry .e-count-badge {
+  background: var(--secondary);
+  padding: 1px 6px;
+  font-size: 11px;
+  color: var(--muted-foreground);
+  font-weight: 500;
+}
+.drawer-entry .e-sub {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  grid-column: 2;
+}
+.drawer-entry .e-action {
+  grid-column: 2;
+  margin-top: 4px;
+}
+.drawer-entry .e-action .btn-outline {
+  height: 28px;
+  padding: 0 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+}
+.drawer-entry .e-action .btn-outline:hover { background: var(--secondary); }
+.drawer-foot {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+}
+.drawer-foot button {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  height: 32px;
+  padding: 0 16px;
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--foreground);
+  color: var(--card);
+  padding: 12px 18px;
+  font-size: 13px;
+  opacity: 0;
+  transition: opacity 200ms ease, transform 200ms ease;
+  z-index: 200;
+  outline: 1px solid rgb(0 0 0 / 0.3);
+}
+.toast.is-show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Helper */
+.prototype-badge {
+  position: fixed;
+  bottom: 10px; left: 10px;
+  background: var(--foreground);
+  color: var(--card);
+  font-size: 10px;
+  padding: 4px 8px;
+  z-index: 50;
+  font-weight: 500;
+  letter-spacing: 0.4px;
+  opacity: 0.85;
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar">
+    <div class="brand">
+      <span><span class="brand-icon"></span>edrone</span>
+      <span style="color: var(--muted-foreground); font-size: 12px;">⤢</span>
+    </div>
+
+    <a class="nav-item is-active" href="#" aria-current="page">
+      <span class="nav-icon">◉</span> Live
+      <span class="nav-chevron"></span>
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">✉</span> Inbox
+      <span class="nav-chevron">0</span>
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">✎</span> Newsletter
+      <span class="nav-chevron">▾</span>
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">⤳</span> Automations
+      <span class="nav-chevron">▾</span>
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">▤</span> Onsites
+      <span class="nav-chevron">▾</span>
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">★</span> Reviews
+      <span class="nav-chevron">▾</span>
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">⚇</span> Customers
+      <span class="nav-chevron">▾</span>
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">⚙</span> Resources
+      <span class="nav-chevron">▾</span>
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">▦</span> Reports
+      <span class="nav-chevron">▾</span>
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">💬</span> AI Sales Chat
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">▥</span> AI Banner Generator
+    </a>
+
+    <div class="workspace-card">
+      <span class="ws-favicon"></span>
+      <div>
+        <div class="ws-name">soitalian.pl</div>
+        <div class="ws-id">Workspace ID: 9975</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== MAIN ===== -->
+  <main class="main">
+
+    <!-- Top bar -->
+    <div class="topbar">
+      <div class="search">
+        <span style="font-size: 14px;">🔍</span>
+        <span>Search for customers and products</span>
+      </div>
+      <div class="topbar-icons">
+        <button class="sys-status" id="sysStatus" title="Click to preview other states">
+          <span class="ss-icon">✓</span>
+          <span class="ss-label">Integration healthy</span>
+        </button>
+        <button class="icon-btn" id="bellBtn" aria-label="Account activity">
+          🔔
+          <span class="dot-badge">3</span>
+        </button>
+        <button class="icon-btn" aria-label="Settings">⚙</button>
+        <button class="icon-btn" aria-label="Account">M</button>
+      </div>
+    </div>
+
+    <!-- Page header -->
+    <div class="page-header">
+      <h1 class="page-title">Live</h1>
+      <div class="date-range">06 May 2026 — 12 May 2026 ▾</div>
+    </div>
+
+    <!-- KPI strip -->
+    <section class="kpi-section">
+      <div class="kpi-toggle" role="tablist" aria-label="Time range">
+        <button data-range="today">Today</button>
+        <button data-range="7d" class="is-active">7 days</button>
+        <button data-range="30d">30 days</button>
+      </div>
+      <div class="kpi-row" id="kpiRow">
+        <div class="kpi-card">
+          <div class="kpi-label">Orders attributed to edrone</div>
+          <div class="kpi-value" data-kpi="orders">367</div>
+          <div class="kpi-delta up" data-delta="orders">▲ +12% vs prev. period</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Revenue attributed</div>
+          <div class="kpi-value" data-kpi="revenue">PLN 41,830</div>
+          <div class="kpi-delta up" data-delta="revenue">▲ +8% vs prev. period</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Messages sent</div>
+          <div class="kpi-value" data-kpi="messages">97,887</div>
+          <div class="kpi-delta up" data-delta="messages">▲ +3% vs prev. period</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">New subscribers</div>
+          <div class="kpi-value" data-kpi="subs">25</div>
+          <div class="kpi-delta flat" data-delta="subs">▬ flat vs prev. period</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main grid: wallet + right-now (left), live feed (right) -->
+    <div class="main-grid">
+
+      <div class="left-col">
+
+    <!-- Wallet stack -->
+    <section class="wallet-section">
+      <div class="section-label">
+        Your next step <span style="text-transform: none; letter-spacing: 0; color: var(--muted-foreground);">— ranked for you right now</span>
+      </div>
+      <div class="wallet-controls">
+        <span class="wc-pagination" id="walletPag">1 / 5</span>
+        <button id="walletPrev" aria-label="Previous">‹</button>
+        <button id="walletNext" aria-label="Next">›</button>
+      </div>
+      <div class="wallet" id="wallet">
+        <!-- Card 1: Cart recovery -->
+        <article class="wallet-card" data-idx="0">
+          <div class="wc-eyebrow">Recover lost revenue</div>
+          <h3 class="wc-headline">5 carts left mid-checkout last week — let me email those shoppers</h3>
+          <p class="wc-sub">I'll send a recovery email 1 hour after they abandon. Most shoppers come back when reminded gently.</p>
+          <div class="wc-actions">
+            <button class="btn-primary wc-cta" data-action="Turn on cart recovery">Turn on cart recovery →</button>
+            <button class="wc-skip" data-skip>Skip for now</button>
+          </div>
+        </article>
+        <!-- Card 2: DNS -->
+        <article class="wallet-card" data-idx="1">
+          <div class="wc-eyebrow">Deliverability</div>
+          <h3 class="wc-headline">Emails landed in spam 14× last week — set your DNS so inboxes trust you</h3>
+          <p class="wc-sub">Add 3 DNS records (DKIM, SPF, DMARC) so receivers know it's really your store sending. ~5 min.</p>
+          <div class="wc-actions">
+            <button class="btn-primary wc-cta" data-action="Set up DNS records">Set up DNS records →</button>
+            <button class="wc-skip" data-skip>Skip for now</button>
+          </div>
+        </article>
+        <!-- Card 3: Smart Recommendations -->
+        <article class="wallet-card" data-idx="2">
+          <div class="wc-eyebrow">More products viewed</div>
+          <h3 class="wc-headline">Shoppers who see recommendation tiles view 3.2× more products</h3>
+          <p class="wc-sub">I'll watch where shoppers pause and slide in products they'd likely buy next — on your product pages.</p>
+          <div class="wc-actions">
+            <button class="btn-primary wc-cta" data-action="Add tiles to product pages">Add tiles to product pages →</button>
+            <button class="wc-skip" data-skip>Skip for now</button>
+          </div>
+        </article>
+        <!-- Card 4: AI subject lines -->
+        <article class="wallet-card" data-idx="3">
+          <div class="wc-eyebrow">Next newsletter</div>
+          <h3 class="wc-headline">Subject lines I write lift open rates ~22% — try on your next send</h3>
+          <p class="wc-sub">I look at your top opens and write 3 variants based on what already worked. You pick one. Takes 10 seconds.</p>
+          <div class="wc-actions">
+            <button class="btn-primary wc-cta" data-action="Use AI for next send">Use AI for next send →</button>
+            <button class="wc-skip" data-skip>Skip for now</button>
+          </div>
+        </article>
+        <!-- Card 5: Expert consult -->
+        <article class="wallet-card" data-idx="4">
+          <div class="wc-eyebrow with-avatar">
+            <img class="wc-avatar" src="assets/expert-lukasz.png" alt="Łukasz B.">
+            <span class="uppercase">Free 30-min review · with Łukasz</span>
+          </div>
+          <h3 class="wc-headline">Want a free 30-min review with your edrone expert?</h3>
+          <p class="wc-sub">A short screen-share — Łukasz spots what's leaking revenue and what to switch on next.</p>
+          <div class="wc-actions">
+            <button class="btn-primary wc-cta" data-action="Book the consult">Book the consult →</button>
+            <button class="wc-skip" data-skip>Skip for now</button>
+          </div>
+        </article>
+
+        <!-- Card 6: AI Sales Chat -->
+        <article class="wallet-card" data-idx="5">
+          <div class="wc-eyebrow">Sell while you sleep</div>
+          <h3 class="wc-headline">I answer shopper questions 24/7 — turn me on in ~5 min</h3>
+          <p class="wc-sub">I know your products and policies. I reply instantly and hand off to your team when needed.</p>
+          <div class="wc-actions">
+            <button class="btn-primary wc-cta" data-action="Set up AI Sales Chat">Set up AI Sales Chat →</button>
+            <button class="wc-skip" data-skip>Skip for now</button>
+          </div>
+        </article>
+
+        <!-- Card 7: AI Newsletter -->
+        <article class="wallet-card" data-idx="6">
+          <div class="wc-eyebrow">Next newsletter</div>
+          <h3 class="wc-headline">I write subject lines that lift open rates ~22%</h3>
+          <p class="wc-sub">I look at what already worked for you and draft 3 variants. You pick one. Ten seconds.</p>
+          <div class="wc-actions">
+            <button class="btn-primary wc-cta" data-action="Use AI for next newsletter">Use AI for next send →</button>
+            <button class="wc-skip" data-skip>Skip for now</button>
+          </div>
+        </article>
+
+        <!-- Card 8: Lucky Wheel -->
+        <article class="wallet-card has-media" data-idx="7">
+          <div class="wc-media">
+            <img src="assets/lucky-wheel.png" alt="Spin to win wheel">
+          </div>
+          <div class="wc-eyebrow">Grow your list</div>
+          <h3 class="wc-headline">The lucky wheel brings up to 6× more subscribers</h3>
+          <p class="wc-sub">Shoppers spin for a small discount — you collect their email and phone before they leave.</p>
+          <div class="wc-actions">
+            <button class="btn-primary wc-cta" data-action="Set up the lucky wheel">Set up the lucky wheel →</button>
+            <button class="wc-skip" data-skip>Skip for now</button>
+          </div>
+        </article>
+
+        <!-- Card 9: Reviews -->
+        <article class="wallet-card has-media" data-idx="8">
+          <div class="wc-media">
+            <div class="mock-reviews-card">
+              <div class="mrc-head">
+                <span class="mrc-stars">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="#ffff8c" stroke="#7c7c7c" stroke-width="1.5" stroke-linejoin="round"><path d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z"/></svg>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="#ffff8c" stroke="#7c7c7c" stroke-width="1.5" stroke-linejoin="round"><path d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z"/></svg>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="#ffff8c" stroke="#7c7c7c" stroke-width="1.5" stroke-linejoin="round"><path d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z"/></svg>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="#ffff8c" stroke="#7c7c7c" stroke-width="1.5" stroke-linejoin="round"><path d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z"/></svg>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="#ffff8c" stroke="#7c7c7c" stroke-width="1.5" stroke-linejoin="round"><path d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z"/></svg>
+                </span>
+                <span class="mrc-rating">4.9</span>
+                <span class="mrc-count">(1,284)</span>
+              </div>
+              <div class="mrc-body">
+                <div class="mrc-entry">
+                  <div class="mrc-entry-head">
+                    <div class="mrc-avatar is-emma">E</div>
+                    <div class="mrc-name-stack">
+                      <span class="mrc-name">Emma S.</span>
+                      <span class="mrc-mini-stars">
+                        <svg width="7" height="7" viewBox="0 0 24 24" fill="#ffff8c" stroke="#7c7c7c" stroke-width="1.5" stroke-linejoin="round"><path d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z"/></svg>
+                        <svg width="7" height="7" viewBox="0 0 24 24" fill="#ffff8c" stroke="#7c7c7c" stroke-width="1.5" stroke-linejoin="round"><path d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z"/></svg>
+                        <svg width="7" height="7" viewBox="0 0 24 24" fill="#ffff8c" stroke="#7c7c7c" stroke-width="1.5" stroke-linejoin="round"><path d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z"/></svg>
+                        <svg width="7" height="7" viewBox="0 0 24 24" fill="#ffff8c" stroke="#7c7c7c" stroke-width="1.5" stroke-linejoin="round"><path d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z"/></svg>
+                        <svg width="7" height="7" viewBox="0 0 24 24" fill="#ffff8c" stroke="#7c7c7c" stroke-width="1.5" stroke-linejoin="round"><path d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z"/></svg>
+                      </span>
+                    </div>
+                    <span class="mrc-verified">
+                      <svg viewBox="0 0 512 512" fill="currentColor"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"/></svg>
+                      <span>Verified</span>
+                    </span>
+                  </div>
+                  <span class="mrc-text">Exactly as described — fast shipping!</span>
+                  <div class="mrc-skel">
+                    <div class="mrc-skel-bar w100"></div>
+                    <div class="mrc-skel-bar w92"></div>
+                    <div class="mrc-skel-bar w75"></div>
+                  </div>
+                </div>
+                <div class="mrc-entry">
+                  <div class="mrc-entry-head">
+                    <div class="mrc-avatar is-james">J</div>
+                    <div class="mrc-name-stack">
+                      <span class="mrc-name">James M.</span>
+                      <span class="mrc-mini-stars">
+                        <svg width="7" height="7" viewBox="0 0 24 24" fill="#ffff8c" stroke="#7c7c7c" stroke-width="1.5" stroke-linejoin="round"><path d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z"/></svg>
+                        <svg width="7" height="7" viewBox="0 0 24 24" fill="#ffff8c" stroke="#7c7c7c" stroke-width="1.5" stroke-linejoin="round"><path d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z"/></svg>
+                        <svg width="7" height="7" viewBox="0 0 24 24" fill="#ffff8c" stroke="#7c7c7c" stroke-width="1.5" stroke-linejoin="round"><path d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z"/></svg>
+                        <svg width="7" height="7" viewBox="0 0 24 24" fill="#ffff8c" stroke="#7c7c7c" stroke-width="1.5" stroke-linejoin="round"><path d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z"/></svg>
+                        <svg width="7" height="7" viewBox="0 0 24 24" fill="#ffff8c" stroke="#7c7c7c" stroke-width="1.5" stroke-linejoin="round"><path d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z"/></svg>
+                      </span>
+                    </div>
+                    <span class="mrc-verified">
+                      <svg viewBox="0 0 512 512" fill="currentColor"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"/></svg>
+                      <span>Verified</span>
+                    </span>
+                  </div>
+                  <span class="mrc-text">Great quality, will buy again</span>
+                  <div class="mrc-skel">
+                    <div class="mrc-skel-bar w100"></div>
+                    <div class="mrc-skel-bar w92"></div>
+                    <div class="mrc-skel-bar w75"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="wc-eyebrow">Trust on product pages</div>
+          <h3 class="wc-headline">Star ratings catch the eye — shoppers click the listing that looks proven</h3>
+          <p class="wc-sub">I collect verified reviews from buyers and display them on your store and in Google.</p>
+          <div class="wc-actions">
+            <button class="btn-primary wc-cta" data-action="Add reviews to store">Add reviews to store →</button>
+            <button class="wc-skip" data-skip>Skip for now</button>
+          </div>
+        </article>
+      </div>
+    </section>
+
+      <!-- Right now (left column, below wallet) -->
+      <aside class="right-panel">
+        <h3>Right now</h3>
+        <div class="rp-sub">live on your store</div>
+
+        <div class="rp-live-count">
+          <span class="num" id="liveCount">12</span>
+          <span class="label">visitors browsing</span>
+        </div>
+
+        <div class="rp-auto-title">Active automations</div>
+        <div class="rp-auto-list">
+          <div class="rp-auto-item">
+            <span class="dot"></span>
+            <span class="rp-name">Smart Recommendations</span>
+            <span class="rp-metric">367k product tiles shown to ready-to-buy shoppers</span>
+          </div>
+          <div class="rp-auto-item">
+            <span class="dot"></span>
+            <span class="rp-name">Abandoned cart recovery</span>
+            <span class="rp-metric">179 carts won back this week</span>
+          </div>
+          <div class="rp-auto-item">
+            <span class="dot"></span>
+            <span class="rp-name">Welcome series</span>
+            <span class="rp-metric">21k new shoppers greeted on day one</span>
+          </div>
+          <div class="rp-auto-item">
+            <span class="dot"></span>
+            <span class="rp-name">Recover customers</span>
+            <span class="rp-metric">12k past buyers came back this month</span>
+          </div>
+          <div class="rp-auto-item">
+            <span class="dot"></span>
+            <span class="rp-name">Review request</span>
+            <span class="rp-metric">32 fresh reviews collected from buyers</span>
+          </div>
+        </div>
+
+        <div class="rp-auto-title" style="margin-top: 20px;">Inactive</div>
+        <div class="rp-auto-list">
+          <div class="rp-auto-item muted">
+            <span class="dot" style="background: var(--border);"></span>
+            <span class="rp-name">AI Sales Chat</span>
+          </div>
+          <div class="rp-auto-item muted">
+            <span class="dot" style="background: var(--border);"></span>
+            <span class="rp-name">Back-in-stock</span>
+          </div>
+        </div>
+      </aside>
+
+      </div> <!-- /left-col -->
+
+      <!-- Live activity (right column) -->
+      <section class="feed-section right-col">
+        <div class="section-head">
+          <h2><span class="live-dot"></span>Live activity</h2>
+          <span class="feed-meta">your shoppers, right now</span>
+        </div>
+
+        <div id="feedList">
+
+          <div class="feed-item">
+            <div class="feed-thumb has-img"><img src="assets/prod-1.jpg" alt=""></div>
+            <div class="feed-body">
+              <div class="feed-line1"><span class="feed-event evt-order">Order placed</span> Ewelina W.</div>
+              <div class="feed-line2">Sukienka maxi SPLENDORE · PLN 487.80</div>
+              <div class="feed-line3">
+                <span class="automation-tag">✓ Review request sent</span>
+              </div>
+            </div>
+            <div class="feed-time">just now</div>
+          </div>
+
+          <div class="feed-item">
+            <div class="feed-thumb has-img"><img src="assets/prod-2.jpg" alt=""></div>
+            <div class="feed-body">
+              <div class="feed-line1"><span class="feed-event evt-cart">Added to cart</span> Anna O.</div>
+              <div class="feed-line2">Torebka LAURA BIAGGI nude · PLN 199.00</div>
+              <div class="feed-line3">
+                <span class="automation-tag">✓ Cart recovery scheduled (in 1h)</span>
+              </div>
+            </div>
+            <div class="feed-time">1 min ago</div>
+          </div>
+
+          <div class="feed-item">
+            <div class="feed-thumb has-img"><img src="assets/prod-3.jpg" alt=""></div>
+            <div class="feed-body">
+              <div class="feed-line1"><span class="feed-event evt-view">Product viewed</span> Anna O.</div>
+              <div class="feed-line2">Kardigan ANDREA candy pink · PLN 113.94</div>
+              <div class="feed-line3">3rd product this session</div>
+            </div>
+            <div class="feed-time">3 min ago</div>
+          </div>
+
+          <div class="feed-item">
+            <div class="feed-thumb has-img"><img src="assets/prod-4.jpg" alt=""></div>
+            <div class="feed-body">
+              <div class="feed-line1"><span class="feed-event evt-msg">Message sent</span> Sweta M.</div>
+              <div class="feed-line2">Recommendations email · 4 products picked</div>
+              <div class="feed-line3">
+                <span class="automation-tag">✓ Smart Recommendations</span>
+              </div>
+            </div>
+            <div class="feed-time">4 min ago</div>
+          </div>
+
+          <div class="feed-item">
+            <div class="feed-thumb is-home">
+              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            </div>
+            <div class="feed-body">
+              <div class="feed-line1"><span class="feed-event evt-home">Homepage viewed</span> Natalia K.</div>
+              <div class="feed-line2">Returning visitor · 2nd visit this week</div>
+              <div class="feed-line3">
+                <span class="automation-tag">✓ Recover customers triggered</span>
+              </div>
+            </div>
+            <div class="feed-time">5 min ago</div>
+          </div>
+
+          <div class="feed-item">
+            <div class="feed-thumb has-img"><img src="assets/prod-5.jpg" alt=""></div>
+            <div class="feed-body">
+              <div class="feed-line1"><span class="feed-event evt-view">Product viewed</span> Unidentified shopper</div>
+              <div class="feed-line2">Sukienka maxi SUMMER DOTS red · PLN 129.90</div>
+              <div class="feed-line3">From organic search</div>
+            </div>
+            <div class="feed-time">7 min ago</div>
+          </div>
+
+          <div class="feed-item">
+            <div class="feed-thumb has-img"><img src="assets/prod-6.jpg" alt=""></div>
+            <div class="feed-body">
+              <div class="feed-line1"><span class="feed-event evt-view">Product viewed</span> Sandra M.</div>
+              <div class="feed-line2">Koszula SONREO white · PLN 79.90</div>
+              <div class="feed-line3">From Recommendations email</div>
+            </div>
+            <div class="feed-time">9 min ago</div>
+          </div>
+
+        </div>
+      </section>
+
+    </div> <!-- /main-grid -->
+
+  </main>
+</div>
+
+<!-- ===== DRAWER ===== -->
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<aside class="drawer" id="drawer" aria-hidden="true" aria-label="Account activity">
+  <div class="drawer-head">
+    <h3>Account activity</h3>
+    <div class="head-actions">
+      <select class="drawer-filter">
+        <option>All</option>
+        <option>Billing</option>
+        <option>Reviews</option>
+        <option>Integrations</option>
+        <option>System</option>
+      </select>
+      <button class="drawer-mark" id="markAll">Mark all as read</button>
+    </div>
+  </div>
+  <div class="drawer-body" id="drawerBody">
+
+    <div class="drawer-entry unread" data-entry>
+      <span class="e-icon"></span>
+      <div class="e-title">
+        License price updated
+        <span class="e-count-badge">12 events</span>
+      </div>
+      <div class="e-sub">Range: 2025-06-01 → 2026-05-13 · billing</div>
+      <div class="e-action"><button class="btn-outline" data-action="Open billing">Go to billing</button></div>
+    </div>
+
+    <div class="drawer-entry unread" data-entry>
+      <span class="e-icon"></span>
+      <div class="e-title">New Google review on your store</div>
+      <div class="e-sub">Today, 14:22 · 5★ from Karolina B.</div>
+      <div class="e-action"><button class="btn-outline" data-action="Open Reviews">Open in Reviews</button></div>
+    </div>
+
+    <div class="drawer-entry unread" data-entry>
+      <span class="e-icon"></span>
+      <div class="e-title">SMS quota: 92% used this month</div>
+      <div class="e-sub">3 days ago · plan limit</div>
+      <div class="e-action"><button class="btn-outline" data-action="Upgrade SMS quota">Upgrade SMS quota</button></div>
+    </div>
+
+    <div class="drawer-entry read" data-entry>
+      <span class="e-icon"></span>
+      <div class="e-title">Shoper plugin updated to v4.2</div>
+      <div class="e-sub">2 weeks ago · integrations</div>
+    </div>
+
+    <div class="drawer-entry read" data-entry>
+      <span class="e-icon"></span>
+      <div class="e-title">DNS records verified — emails now signed</div>
+      <div class="e-sub">3 weeks ago · system</div>
+    </div>
+
+  </div>
+  <div class="drawer-empty" id="drawerEmpty">
+    <div style="font-size: 32px; margin-bottom: 12px;">✓</div>
+    Nothing new — your account is quiet.
+  </div>
+  <div class="drawer-foot">
+    <button id="drawerClose">Close</button>
+  </div>
+</aside>
+
+<div class="toast" id="toast">Action logged.</div>
+
+<div class="prototype-badge">PROTOTYPE · clickable mockup · 2026-05-13</div>
+
+<script>
+// ===== Typewriter intro on page load — "Hello," → "What are we shipping today?" → "Live" =====
+(function runIntro() {
+  const titleEl = document.querySelector('.page-title');
+  if (!titleEl) return;
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+  async function typeText(text, speed) {
+    for (let i = 0; i < text.length; i++) {
+      titleEl.textContent = text.slice(0, i + 1);
+      await sleep(speed);
+    }
+  }
+  async function deleteText(speed) {
+    let t = titleEl.textContent;
+    while (t.length > 0) {
+      t = t.slice(0, -1);
+      titleEl.textContent = t;
+      await sleep(speed);
+    }
+  }
+  async function run() {
+    titleEl.textContent = '';
+    await sleep(260);
+
+    await typeText('Hello,', 70);
+    await sleep(550);
+    await deleteText(22);
+    await sleep(120);
+
+    await typeText('What are we shipping today?', 44);
+    await sleep(650);
+    await deleteText(20);
+    await sleep(120);
+
+    await typeText('Live', 90);
+    await sleep(700);
+    titleEl.classList.add('is-done');
+
+    // After "Live" lands, briefly highlight the FRONT wallet card — same rhythm as the "just now" feed flash
+    await sleep(180);
+    const frontCard = document.querySelector('.wallet-card[data-pos="front"]');
+    if (frontCard) {
+      frontCard.classList.add('is-highlighted');
+      setTimeout(() => frontCard.classList.remove('is-highlighted'), 2100);
+    }
+  }
+  run();
+})();
+
+// ===== KPI toggle =====
+const kpiData = {
+  today: {
+    orders:   { v: '12',         d: 'flat',  t: '▬ flat vs yesterday' },
+    revenue:  { v: 'PLN 4,830',  d: 'up',    t: '▲ +15% vs yesterday' },
+    messages: { v: '3,210',      d: 'flat',  t: '▬ flat vs yesterday' },
+    subs:     { v: '4',          d: 'up',    t: '▲ +2 vs yesterday' }
+  },
+  '7d': {
+    orders:   { v: '367',        d: 'up',    t: '▲ +12% vs prev. 7 days' },
+    revenue:  { v: 'PLN 41,830', d: 'up',    t: '▲ +8% vs prev. 7 days' },
+    messages: { v: '97,887',     d: 'up',    t: '▲ +3% vs prev. 7 days' },
+    subs:     { v: '25',         d: 'flat',  t: '▬ flat vs prev. 7 days' }
+  },
+  '30d': {
+    orders:   { v: '1,452',      d: 'up',    t: '▲ +18% vs prev. 30 days' },
+    revenue:  { v: 'PLN 178,250',d: 'up',    t: '▲ +22% vs prev. 30 days' },
+    messages: { v: '420,510',    d: 'up',    t: '▲ +11% vs prev. 30 days' },
+    subs:     { v: '213',        d: 'up',    t: '▲ +34% vs prev. 30 days' }
+  }
+};
+document.querySelectorAll('.kpi-toggle button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.kpi-toggle button').forEach(b => b.classList.remove('is-active'));
+    btn.classList.add('is-active');
+    const range = btn.dataset.range;
+    const data = kpiData[range];
+    Object.keys(data).forEach(k => {
+      document.querySelector(`[data-kpi="${k}"]`).textContent = data[k].v;
+      const dEl = document.querySelector(`[data-delta="${k}"]`);
+      dEl.textContent = data[k].t;
+      dEl.classList.remove('up','down','flat');
+      dEl.classList.add(data[k].d);
+    });
+  });
+});
+
+// ===== Wallet stack =====
+const cards = Array.from(document.querySelectorAll('.wallet-card'));
+// Initial ranking — front = Reviews ("Trust on product pages"), then the rest in declared order
+const FRONT_IDX = 8; // data-idx of Reviews card
+let order = [FRONT_IDX, ...cards.map((_, i) => i).filter(i => i !== FRONT_IDX)];
+function renderStack() {
+  cards.forEach((card, i) => {
+    const pos = order.indexOf(i);
+    if (pos === 0) card.dataset.pos = 'front';
+    else if (pos === 1) card.dataset.pos = 'peek1';
+    else if (pos === 2) card.dataset.pos = 'peek2';
+    else if (pos === 3) card.dataset.pos = 'peek3';
+    else card.dataset.pos = 'hidden';
+  });
+  document.getElementById('walletPag').textContent = `${order[0]+1} / ${cards.length}`;
+}
+function bringForward(cardIdx) {
+  order = order.filter(i => i !== cardIdx);
+  order.unshift(cardIdx);
+  renderStack();
+}
+function next() {
+  const moved = order.shift();
+  order.push(moved);
+  renderStack();
+}
+function prev() {
+  const moved = order.pop();
+  order.unshift(moved);
+  renderStack();
+}
+document.getElementById('walletNext').addEventListener('click', next);
+document.getElementById('walletPrev').addEventListener('click', prev);
+cards.forEach(card => {
+  card.addEventListener('click', (e) => {
+    if (card.dataset.pos === 'front') return;
+    if (e.target.closest('button')) return;
+    bringForward(parseInt(card.dataset.idx, 10));
+  });
+});
+document.querySelectorAll('[data-skip]').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    next();
+    showToast('Skipped — showing next priority');
+  });
+});
+renderStack();
+
+// ===== CTA toast =====
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('is-show');
+  clearTimeout(t._h);
+  t._h = setTimeout(() => t.classList.remove('is-show'), 1800);
+}
+document.querySelectorAll('[data-action]').forEach(el => {
+  el.addEventListener('click', (e) => {
+    e.stopPropagation();
+    showToast('Open: ' + el.dataset.action);
+  });
+});
+
+// ===== Drawer =====
+const drawer = document.getElementById('drawer');
+const overlay = document.getElementById('drawerOverlay');
+function openDrawer() {
+  drawer.classList.add('is-open');
+  overlay.classList.add('is-open');
+  drawer.setAttribute('aria-hidden', 'false');
+}
+function closeDrawer() {
+  drawer.classList.remove('is-open');
+  overlay.classList.remove('is-open');
+  drawer.setAttribute('aria-hidden', 'true');
+}
+document.getElementById('bellBtn').addEventListener('click', openDrawer);
+document.getElementById('drawerClose').addEventListener('click', closeDrawer);
+overlay.addEventListener('click', closeDrawer);
+document.getElementById('markAll').addEventListener('click', () => {
+  document.querySelectorAll('.drawer-entry').forEach(e => {
+    e.classList.remove('unread');
+    e.classList.add('read');
+  });
+  showToast('All marked as read');
+});
+
+// ===== System status pill — cycle through variants =====
+const sysStates = [
+  { cls: '',           icon: '✓', label: 'Integration healthy' },
+  { cls: 'is-warning', icon: '⚠', label: 'Integration: action required' },
+  { cls: 'is-paused',  icon: '⏸', label: 'Integration paused' },
+  { cls: 'is-muted',   icon: '◯', label: 'Not integrated' },
+];
+let sysIdx = 0;
+const sysEl = document.getElementById('sysStatus');
+sysEl.addEventListener('click', () => {
+  sysIdx = (sysIdx + 1) % sysStates.length;
+  const s = sysStates[sysIdx];
+  sysEl.className = 'sys-status' + (s.cls ? ' ' + s.cls : '');
+  sysEl.querySelector('.ss-icon').textContent = s.icon;
+  sysEl.querySelector('.ss-label').textContent = s.label;
+  showToast('Status: ' + s.label);
+});
+
+// ===== Right now — fake live counter =====
+let live = 12;
+setInterval(() => {
+  live += Math.random() > 0.5 ? 1 : -1;
+  live = Math.max(8, Math.min(20, live));
+  document.getElementById('liveCount').textContent = live;
+}, 3500);
+
+// ===== Live ticker — new events appear at the top =====
+const tickerEvents = [
+  { type: 'order', cls: 'evt-order', label: 'Order placed', who: 'Marta K.', line2: 'Bluzka FRILL white · PLN 159.00',          img: 'assets/prod-7.jpg', tag: '✓ Review request scheduled' },
+  { type: 'cart',  cls: 'evt-cart',  label: 'Added to cart', who: 'Joanna P.', line2: 'Sukienka EVERLY FLOWERS green · PLN 139.90', img: 'assets/prod-3.jpg', tag: '✓ Cart recovery scheduled (in 1h)' },
+  { type: 'view',  cls: 'evt-view',  label: 'Product viewed', who: 'Agnieszka B.', line2: 'Spodnie LOPEZ light jeans · PLN 109.90',  img: 'assets/prod-1.jpg', tag: '' },
+  { type: 'msg',   cls: 'evt-msg',   label: 'Message sent',   who: 'Jolanta Z.',   line2: 'Welcome series · day 1 greeting',          img: 'assets/prod-4.jpg', tag: '✓ Welcome series' },
+  { type: 'view',  cls: 'evt-view',  label: 'Product viewed', who: 'Returning shopper', line2: 'Kombinezon VICENZA black · PLN 199.00', img: 'assets/prod-2.jpg', tag: '' },
+  { type: 'order', cls: 'evt-order', label: 'Order placed',   who: 'Wioletta R.', line2: 'Torebka LAURA BIAGGI nude · PLN 199.00',  img: 'assets/prod-2.jpg', tag: '✓ Recommendations triggered' },
+  { type: 'cart',  cls: 'evt-cart',  label: 'Added to cart',  who: 'Karolina M.', line2: 'Koszula SONREO white · PLN 79.90',         img: 'assets/prod-6.jpg', tag: '✓ Cart recovery scheduled (in 1h)' },
+  { type: 'home',  cls: 'evt-home',  label: 'Homepage viewed', who: 'Natalia K.', line2: '3rd visit this week',                       img: '',                  tag: '✓ Recover customers triggered' },
+];
+let tickerIdx = 0;
+const feedListEl = document.getElementById('feedList');
+const MAX_FEED_ITEMS = 9;
+
+function buildFeedItem(evt) {
+  const tagHTML = evt.tag ? `<span class="automation-tag">${evt.tag}</span>` : '<span style="color: var(--muted-foreground); font-size: 12px;">From organic visit</span>';
+  const thumbHTML = evt.img
+    ? `<div class="feed-thumb has-img"><img src="${evt.img}" alt=""></div>`
+    : `<div class="feed-thumb is-home"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>`;
+  const wrap = document.createElement('div');
+  wrap.className = 'feed-item new-event';
+  wrap.innerHTML = `
+    ${thumbHTML}
+    <div class="feed-body">
+      <div class="feed-line1"><span class="feed-event ${evt.cls}">${evt.label}</span> ${evt.who}</div>
+      <div class="feed-line2">${evt.line2}</div>
+      <div class="feed-line3">${tagHTML}</div>
+    </div>
+    <div class="feed-time">just now</div>
+  `;
+  return wrap;
+}
+
+function tickOlderTimes() {
+  const items = feedListEl.querySelectorAll('.feed-item');
+  items.forEach((item, i) => {
+    const timeEl = item.querySelector('.feed-time');
+    if (i === 0) return; // newest stays "just now"
+    if (i === 1) timeEl.textContent = '1 min ago';
+    else timeEl.textContent = `${i} min ago`;
+  });
+}
+
+function pushTickerEvent() {
+  const evt = tickerEvents[tickerIdx % tickerEvents.length];
+  tickerIdx++;
+  const newEl = buildFeedItem(evt);
+  feedListEl.insertBefore(newEl, feedListEl.firstChild);
+  const items = feedListEl.querySelectorAll('.feed-item');
+  if (items.length > MAX_FEED_ITEMS) {
+    items[items.length - 1].remove();
+  }
+  setTimeout(() => newEl.classList.add('cooled'), 1300);
+  tickOlderTimes();
+  // Next tick — random 3–6s, like the real live events page
+  const next = 3000 + Math.random() * 3000;
+  setTimeout(pushTickerEvent, next);
+}
+setTimeout(pushTickerEvent, 2500);
+</script>
+</body>
+</html>
