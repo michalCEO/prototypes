@@ -1,0 +1,1885 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live — non-integrated, staged narrative (prototype 2026-05-15)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Cormorant:ital,wght@1,400;1,500&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   edrone DS — updated tokens (2026-05-15 snapshot)
+   - radius 0 (square)
+   - --accent = warm neutral (NOT cyan)
+   - --ring = dark (NOT yellow)
+   - --mint added (Full Palette third hue)
+   - chart-1 anchor = Pink
+   ============================================================ */
+:root {
+  --radius: 0;
+
+  --background: #fafafa;
+  --foreground: #2d2d29;
+  --card: #ffffff;
+  --card-foreground: #2d2d29;
+  --popover: #ffffff;
+
+  --primary: #ffff8c;
+  --primary-foreground: #2d2d29;
+  --mint: #d3f8e2;
+  --destructive: #fecacc;
+  --destructive-foreground: #7f2628;
+
+  --secondary: #f3f1ec;
+  --muted: #f3f1ec;
+  --muted-foreground: #6b6a64;
+  --accent: #f3f1ec;
+  --accent-foreground: #2d2d29;
+
+  --border: #e8e6e1;
+  --input: #e8e6e1;
+  --ring: #2d2d29;
+
+  --sidebar: #fffff5;
+
+  /* Chart palette — Pink anchor, then Yellow, Mint, Blue, Peach */
+  --chart-1: #fecacc;
+  --chart-2: #ffff8c;
+  --chart-3: #d3f8e2;
+  --chart-4: #a3d7fb;
+  --chart-5: #f2ab7f;
+
+  /* Tone scales for hierarchy */
+  --chart-yellow-100: #fffde1;
+  --chart-yellow-200: #fff9b8;
+  --chart-yellow-300: #ffff8c;
+  --chart-mint-200:   #e7fcef;
+  --chart-mint-300:   #d3f8e2;
+  --chart-mint-400:   #7dc9a0;
+  --chart-blue-100:   #e6f3fe;
+  --chart-blue-200:   #c7e3fc;
+  --chart-blue-300:   #a3d7fb;
+  --chart-green-100:  #e0f2e3;
+  --chart-green-200:  #aedab8;
+  --chart-green-300:  #54b767;
+  --chart-pink-200:   #fed5d7;
+  --chart-pink-300:   #fecacc;
+  --chart-pink-400:   #7f2628;
+  --chart-peach-200:  #fcd7be;
+  --chart-peach-300:  #f2ab7f;
+
+  --font-sans: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-italic: 'Cormorant', Georgia, serif;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+  min-height: 100vh;
+}
+button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
+
+/* Yellow primary surfaces — subtle dark outline */
+.btn-primary {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border: none;
+  outline: 1px solid rgb(0 0 0 / 0.18);
+  outline-offset: -1px;
+  font-family: inherit;
+  font-weight: 500;
+  transition: outline-color 150ms ease, transform 80ms ease;
+}
+.btn-primary:hover  { outline-color: rgb(0 0 0 / 0.5); }
+.btn-primary:active { transform: translateY(1px); }
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+.app {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 100vh;
+}
+
+/* Sidebar — yellow gradient (DS canonical) */
+.sidebar {
+  background: linear-gradient(354deg, #ffff9c 10.94%, #fffff5 43.75%);
+  border-right: 1px solid var(--border);
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px 16px;
+  font-weight: 500;
+  font-size: 16px;
+}
+.brand-icon {
+  width: 20px; height: 20px;
+  background: #2d2d29;
+  display: inline-block;
+  margin-right: 6px;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+  color: var(--foreground);
+  text-decoration: none;
+}
+.nav-item:hover:not(.is-disabled) { background: rgba(255,255,255,0.6); }
+.nav-item.is-active { background: rgba(255,255,255,0.85); font-weight: 500; }
+.nav-item.is-disabled { color: var(--muted-foreground); cursor: default; }
+.nav-item .nav-icon {
+  width: 16px; height: 16px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+.nav-item .nav-chevron { margin-left: auto; color: var(--muted-foreground); font-size: 11px; }
+.nav-item .nav-lock    { margin-left: auto; color: var(--muted-foreground); font-size: 11px; }
+
+.workspace-card {
+  margin-top: auto;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--border);
+  padding: 10px;
+  font-size: 12px;
+}
+.workspace-card .ws-name { font-weight: 500; }
+.workspace-card .ws-id { color: var(--muted-foreground); font-size: 11px; margin-bottom: 6px; }
+.workspace-card .ws-progress {
+  width: 100%; height: 4px;
+  background: var(--secondary);
+  margin-top: 4px;
+}
+.workspace-card .ws-progress span {
+  display: block; height: 100%;
+  background: var(--chart-mint-400);
+  transition: width 600ms ease;
+}
+
+/* Main */
+.main {
+  padding: 0 32px 60px;
+  max-width: 1400px;
+}
+
+/* Topbar */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+.search {
+  flex: 1; height: 36px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  padding: 0 12px;
+  display: flex; align-items: center; gap: 8px;
+  color: var(--muted-foreground);
+  font-size: 14px;
+  max-width: 480px;
+}
+.topbar-icons { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.icon-btn {
+  width: 36px; height: 36px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  display: inline-flex; align-items: center; justify-content: center;
+  position: relative;
+  color: var(--foreground);
+  font-size: 16px;
+}
+.icon-btn:hover { background: var(--secondary); }
+.icon-btn .dot-badge {
+  position: absolute; top: -4px; right: -4px;
+  min-width: 16px; height: 16px;
+  padding: 0 4px;
+  background: var(--destructive);
+  color: var(--destructive-foreground);
+  font-size: 10px; font-weight: 500;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+
+.sys-status {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 28px; padding: 0 10px;
+  font-size: 12px; font-weight: 500; font-family: inherit;
+  background: var(--secondary);
+  color: var(--muted-foreground);
+  border: 1px solid var(--border);
+  white-space: nowrap; margin-right: 4px;
+}
+
+/* Page header */
+.page-header {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 16px;
+}
+.page-title {
+  font-size: 28px; line-height: 36px;
+  font-weight: 500; margin: 0;
+  letter-spacing: -0.5px;
+  position: relative;
+  min-height: 36px;
+  white-space: nowrap;
+}
+.page-title::after {
+  content: "|";
+  display: inline-block;
+  margin-left: 2px;
+  font-weight: 300;
+  color: var(--foreground);
+  animation: caret-blink 1s steps(2, end) infinite;
+  transform: translateY(-1px);
+}
+.page-title.is-done::after { display: none; }
+@keyframes caret-blink {
+  0%, 50%   { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
+}
+.page-meta {
+  color: var(--muted-foreground);
+  font-size: 13px;
+  margin-left: auto;
+}
+
+/* ============================================================
+   STEPPER — single source of progress for the whole tour
+   ============================================================ */
+.stepper {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0;
+  margin-bottom: 20px;
+  position: relative;
+}
+.stepper::before {
+  content: "";
+  position: absolute;
+  top: 11px; left: 12%; right: 12%;
+  height: 1px;
+  background: var(--border);
+  z-index: 0;
+}
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  position: relative;
+  z-index: 1;
+}
+.step-dot {
+  width: 22px; height: 22px;
+  border: 1px solid var(--border);
+  background: var(--background);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 500;
+  color: var(--muted-foreground);
+}
+.step-label {
+  font-size: 11px;
+  color: var(--muted-foreground);
+  text-align: center;
+  letter-spacing: 0.2px;
+}
+.step.is-current .step-dot {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  outline: 1px solid rgb(0 0 0 / 0.18);
+  outline-offset: -1px;
+  border-color: transparent;
+}
+.step.is-current .step-label {
+  color: var(--foreground);
+  font-weight: 500;
+}
+.step.is-done .step-dot {
+  background: var(--foreground);
+  color: var(--card);
+  border-color: var(--foreground);
+}
+.step.is-done .step-label {
+  color: var(--foreground);
+}
+
+/* ============================================================
+   STAGE CARD — single dominant content panel
+   ============================================================ */
+.stage-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 36px 40px;
+  min-height: 480px;
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: 40px;
+  margin-bottom: 20px;
+  position: relative;
+  overflow: hidden;
+}
+.stage-card.is-fading {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+.stage-card.is-entering {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+.stage-card.is-shown {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 320ms ease 60ms, transform 320ms ease 60ms;
+}
+
+/* Left column — narrative */
+.s-eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted-foreground);
+  font-weight: 500;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.s-eyebrow .step-pill {
+  background: var(--secondary);
+  padding: 2px 8px;
+  letter-spacing: 0.6px;
+}
+.s-amaze {
+  font-size: 28px; line-height: 34px;
+  font-weight: 500;
+  letter-spacing: -0.4px;
+  margin: 0 0 14px;
+  max-width: 500px;
+}
+.s-pain {
+  font-size: 13.5px; line-height: 20px;
+  color: var(--muted-foreground);
+  margin: 0 0 22px;
+  max-width: 460px;
+}
+
+/* Journey strip — visualized painkiller (mechanism, not outcome) */
+.journey {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 26px;
+  flex-wrap: wrap;
+}
+.journey-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--secondary);
+  border: 1px solid var(--border);
+  font-size: 12px;
+}
+.journey-step .js-icon { font-size: 14px; }
+.journey-step.is-edrone { background: var(--chart-yellow-100); }
+.journey-step.is-end { background: var(--chart-mint-200); }
+.journey-arrow { color: var(--muted-foreground); font-weight: 500; font-size: 12px; }
+
+/* CTA row */
+.cta-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: auto;
+}
+.btn-continue {
+  height: 44px;
+  padding: 0 22px;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.cta-hint {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+/* Right column — sample design preview */
+.s-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-height: 380px;
+}
+
+/* ============================================================
+   STAGE 1 — EMAIL MOCKUP (so italian branded)
+   ============================================================ */
+.email-mock {
+  width: 320px;
+  background: #fff;
+  border: 1px solid var(--border);
+  padding: 22px 22px 26px;
+  box-shadow: 0 12px 28px -8px rgb(0 0 0 / 0.12);
+  position: relative;
+}
+.email-mock .em-logo {
+  text-align: center;
+  font-family: var(--font-italic);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 16px;
+  padding: 6px 12px;
+  position: relative;
+  display: inline-block;
+  margin: 0 auto 20px;
+  left: 50%; transform: translateX(-50%);
+}
+.email-mock .em-logo::before,
+.email-mock .em-logo::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0;
+  height: 1px;
+  background: #2d2d29;
+}
+.email-mock .em-logo::before { top: 0; }
+.email-mock .em-logo::after  { bottom: 0; }
+.email-mock .em-image {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  background-size: cover;
+  background-position: center;
+  margin-bottom: 18px;
+}
+.email-mock .em-headline {
+  font-family: var(--font-italic);
+  font-style: italic;
+  font-size: 18px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  text-align: center;
+  margin-bottom: 8px;
+}
+.email-mock .em-body {
+  font-size: 11.5px; line-height: 16px;
+  color: #545454;
+  text-align: center;
+  margin-bottom: 16px;
+}
+.email-mock .em-cta {
+  background: #2d2d29;
+  color: #fff;
+  text-align: center;
+  padding: 10px;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+.email-mock-badge {
+  position: absolute;
+  top: -10px; right: -10px;
+  background: var(--mint);
+  color: var(--foreground);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border: 1px solid var(--chart-mint-400);
+  z-index: 12;
+}
+
+/* ============================================================
+   STAGE 1 — 7-EMAIL DECK (fan to upper-left of the front card)
+   ============================================================ */
+.email-deck-wrap {
+  position: relative;
+  width: 340px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 38px;
+}
+.email-deck {
+  position: relative;
+  width: 280px;
+  height: 550px;
+}
+.email-card {
+  position: absolute;
+  top: 0; left: 0;
+  width: 280px;
+  background: #fff;
+  border: 1px solid var(--border);
+  padding: 18px 18px 22px;
+  box-shadow: 0 12px 28px -8px rgb(0 0 0 / 0.12);
+  transform-origin: center;
+  transition: transform 360ms cubic-bezier(0.32, 0.72, 0, 1),
+              opacity 240ms ease-out,
+              box-shadow 240ms ease-out;
+}
+.email-card[data-pos="front"]  { transform: translate(0, 0)        rotate(0deg);    z-index: 10; }
+.email-card[data-pos="peek1"]  { transform: translate(-10px, 6px)  rotate(-1.8deg); z-index:  9; opacity: 0.94; cursor: pointer; }
+.email-card[data-pos="peek2"]  { transform: translate(-18px, 11px) rotate(-3deg);   z-index:  8; opacity: 0.84; cursor: pointer; }
+.email-card[data-pos="peek3"]  { transform: translate(-25px, 15px) rotate(-3.8deg); z-index:  7; opacity: 0.72; cursor: pointer; }
+.email-card[data-pos="peek4"]  { transform: translate(-30px, 18px) rotate(-4.4deg); z-index:  6; opacity: 0.55; cursor: pointer; }
+.email-card[data-pos="peek5"]  { transform: translate(-34px, 20px) rotate(-4.8deg); z-index:  5; opacity: 0.38; cursor: pointer; }
+.email-card[data-pos="peek6"]  { transform: translate(-37px, 22px) rotate(-5.2deg); z-index:  4; opacity: 0.24; cursor: pointer; }
+.email-card[data-pos="hidden"] { opacity: 0; pointer-events: none; z-index: 0; }
+
+.email-card[data-pos^="peek"]:hover {
+  transform: translate(-6px, 2px) rotate(-1deg) scale(1.01) !important;
+  opacity: 1 !important;
+  box-shadow: 0 18px 32px -6px rgb(0 0 0 / 0.18);
+  z-index: 11;
+}
+
+/* Badge sits on the front card only — peeks stay clean */
+.email-card .email-mock-badge { display: none; }
+.email-card[data-pos="front"] .email-mock-badge { display: block; }
+
+/* Card internals (so italian branded) */
+.email-card .em-logo {
+  text-align: center;
+  font-family: var(--font-italic);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 15px;
+  padding: 5px 12px;
+  position: relative;
+  display: inline-block;
+  margin: 0 auto 16px;
+  left: 50%; transform: translateX(-50%);
+}
+.email-card .em-logo::before,
+.email-card .em-logo::after {
+  content: ""; position: absolute; left: 0; right: 0; height: 1px; background: #2d2d29;
+}
+.email-card .em-logo::before { top: 0; }
+.email-card .em-logo::after  { bottom: 0; }
+.email-card .em-image {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  background-size: cover;
+  background-position: center;
+  margin-bottom: 14px;
+}
+.email-card .em-headline {
+  font-family: var(--font-italic);
+  font-style: italic;
+  font-size: 17px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  text-align: center;
+  margin-bottom: 6px;
+  line-height: 1.2;
+}
+.email-card .em-body {
+  font-size: 11px; line-height: 15px;
+  color: #545454;
+  text-align: center;
+  margin-bottom: 12px;
+}
+.email-card .em-cta {
+  background: #2d2d29;
+  color: #fff;
+  text-align: center;
+  padding: 9px;
+  font-size: 10.5px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.deck-controls {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+.deck-meta strong { color: var(--foreground); font-weight: 500; }
+.deck-hint {
+  font-size: 11px;
+  color: var(--muted-foreground);
+  font-style: italic;
+  white-space: nowrap;
+}
+
+/* ============================================================
+   STAGE 2 — POPUP MOCKUP (store + overlay popup)
+   ============================================================ */
+.store-mock {
+  width: 480px;
+  height: 420px;
+  background: #fff;
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 14px 30px -8px rgb(0 0 0 / 0.14);
+}
+.store-mock .sm-nav {
+  height: 44px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  gap: 18px;
+  font-size: 11.5px;
+  color: var(--muted-foreground);
+}
+.store-mock .sm-nav .sm-brand {
+  font-family: var(--font-italic);
+  font-style: italic;
+  color: var(--foreground);
+  font-size: 16px;
+  font-weight: 500;
+  margin-right: auto;
+}
+.store-mock .sm-hero {
+  height: 100%;
+  background-image: url(assets/prod-2.jpg);
+  background-size: cover;
+  background-position: center;
+}
+.popup-overlay {
+  position: absolute;
+  inset: 44px 0 0 0;
+  background: rgb(45 45 41 / 0.42);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.popup-card {
+  background: #fff;
+  width: 300px;
+  padding: 22px 22px 18px;
+  border: 1px solid var(--border);
+  text-align: center;
+  position: relative;
+}
+.popup-card .pc-close {
+  position: absolute;
+  top: 8px; right: 10px;
+  font-size: 18px;
+  color: var(--muted-foreground);
+  background: transparent;
+  border: none;
+  padding: 0;
+  width: 22px; height: 22px;
+}
+.popup-card .pc-eyebrow {
+  font-family: var(--font-italic);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--foreground);
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+.popup-card .pc-headline {
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 24px;
+  margin-bottom: 16px;
+}
+.popup-card .pc-input {
+  width: 100%;
+  height: 36px;
+  border: 1px solid var(--border);
+  font-size: 13px;
+  padding: 0 10px;
+  margin-bottom: 8px;
+  color: var(--muted-foreground);
+  background: var(--background);
+}
+.popup-card .pc-cta {
+  width: 100%;
+  height: 38px;
+  background: var(--primary);
+  outline: 1px solid rgb(0 0 0 / 0.18);
+  outline-offset: -1px;
+  border: none;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+.popup-card .pc-foot {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+
+/* ============================================================
+   STAGE 3 — SOCIAL PROOF (store + floating proof bubble)
+   ============================================================ */
+.proof-bubble {
+  position: absolute;
+  bottom: 18px;
+  left: 18px;
+  background: #fff;
+  border: 1px solid var(--border);
+  padding: 12px 16px 12px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  box-shadow: 0 8px 18px -4px rgb(0 0 0 / 0.22);
+  max-width: 300px;
+  animation: proofPulse 3.5s ease-in-out infinite;
+}
+@keyframes proofPulse {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2px); }
+}
+.proof-bubble .pb-thumb {
+  width: 46px; height: 46px;
+  background-size: cover;
+  background-position: center;
+  background-image: url(assets/prod-3.jpg);
+  flex-shrink: 0;
+}
+.proof-bubble .pb-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.proof-bubble .pb-name {
+  font-weight: 500;
+  color: var(--foreground);
+  font-size: 13px;
+}
+.proof-bubble .pb-meta {
+  color: var(--muted-foreground);
+  font-size: 11.5px;
+}
+.proof-bubble .pb-dot {
+  width: 7px; height: 7px;
+  background: var(--chart-green-300);
+  border-radius: 50%;
+  position: absolute;
+  top: 10px; right: 12px;
+  animation: dotPulse 1.4s ease-in-out infinite;
+}
+@keyframes dotPulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.8); }
+  50%      { opacity: 1;   transform: scale(1.1); }
+}
+
+/* ============================================================
+   STAGE 4 — DATABASE / IDENTIFICATION SEQUENCE
+   ============================================================ */
+.seq-mock {
+  width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.seq-row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 14px;
+  background: #fff;
+  border: 1px solid var(--border);
+  position: relative;
+}
+.seq-row .seq-num {
+  width: 24px; height: 24px;
+  background: var(--secondary);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px;
+  font-weight: 500;
+}
+.seq-row.is-sent .seq-num {
+  background: var(--mint);
+  color: var(--foreground);
+}
+.seq-row .seq-title {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--foreground);
+}
+.seq-row .seq-sub {
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.seq-row .seq-day {
+  font-size: 11px;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+.seq-result {
+  margin-top: 8px;
+  padding: 14px;
+  background: var(--chart-mint-200);
+  border: 1px solid var(--chart-mint-400);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+}
+.seq-result .sr-icon {
+  width: 28px; height: 28px;
+  background: var(--mint);
+  border: 1px solid var(--chart-mint-400);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.seq-result .sr-text strong { font-weight: 500; }
+.seq-result .sr-text .sr-sub {
+  display: block;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+/* ============================================================
+   STAGE 5 — INTEGRATE (different layout: full-width, no preview column)
+   ============================================================ */
+.stage-card.stage-5 {
+  padding: 36px 40px 32px;
+}
+.s5-head {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 40px;
+  margin-bottom: 30px;
+}
+.s5-amaze {
+  font-size: 32px; line-height: 38px;
+  font-weight: 500;
+  letter-spacing: -0.5px;
+  margin: 0 0 10px;
+  max-width: 540px;
+}
+.s5-pain {
+  font-size: 14px; line-height: 20px;
+  color: var(--muted-foreground);
+  margin: 0;
+  max-width: 480px;
+}
+.s5-time-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 18px;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+.s5-time-row .time-pill {
+  background: var(--chart-mint-200);
+  border: 1px solid var(--chart-mint-400);
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+/* Accumulator strip — what's already prepared (recall) */
+.accumulator {
+  margin-top: 0;
+  margin-bottom: 26px;
+}
+.acc-eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted-foreground);
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+.acc-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.acc-tile {
+  background: #fff;
+  border: 1px solid var(--border);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 92px;
+  position: relative;
+}
+.acc-tile .at-check {
+  position: absolute;
+  top: 10px; right: 10px;
+  width: 18px; height: 18px;
+  background: var(--mint);
+  border: 1px solid var(--chart-mint-400);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px;
+  color: var(--foreground);
+}
+
+/* "+30 more" tile — signals there's more beyond what was shown */
+.acc-tile.acc-tile-more {
+  border-style: dashed;
+  background: var(--secondary);
+}
+.acc-tile.acc-tile-more .at-check {
+  background: var(--chart-yellow-200);
+  border-color: var(--chart-yellow-300);
+  color: var(--foreground);
+  font-weight: 500;
+}
+.acc-tile .at-name {
+  font-size: 13px;
+  font-weight: 500;
+  padding-right: 22px;
+}
+.acc-tile .at-detail {
+  font-size: 11.5px;
+  color: var(--muted-foreground);
+  line-height: 16px;
+}
+
+/* Bonus row — top of iceberg */
+.acc-bonus {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 12px 14px;
+  background: var(--secondary);
+  border: 1px solid var(--border);
+}
+.acc-bonus .ab-eyebrow {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted-foreground);
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+.acc-bonus .ab-tile {
+  background: #fff;
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.acc-bonus .ab-tile .ab-icon { font-size: 14px; }
+
+/* Platform picker hero — Stage 5 primary action */
+.picker-section {
+  border-top: 1px solid var(--border);
+  padding-top: 24px;
+}
+.picker-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.picker-title {
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+  margin: 0;
+}
+.picker-sub {
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+.picker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.platform-tile {
+  background: var(--card);
+  border: 1px solid var(--border);
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  font-weight: 500;
+  font-size: 16px;
+  letter-spacing: 0.2px;
+  transition: background 120ms ease, border-color 120ms ease, transform 80ms ease;
+  position: relative;
+  outline-offset: -1px;
+}
+.platform-tile:hover  { background: var(--secondary); border-color: var(--foreground); }
+.platform-tile:active { transform: translateY(1px); }
+.platform-tile.tile-shopify   { color: #95bf47; }
+.platform-tile.tile-woo       { color: #7f54b3; }
+.platform-tile.tile-shoper    { color: #4949ff; }
+.platform-tile.tile-presta    { color: #29333d; }
+.platform-tile.tile-idosell   { color: #46b049; }
+.platform-tile.tile-nuvem     { color: #14c5db; }
+.platform-tile.tile-other {
+  grid-column: span 3;
+  border-style: dashed;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  height: 44px;
+}
+
+/* Stage 5 highlight flash on the picker — same rhythm as integrated Live wallet flash */
+.picker-section.is-highlighted {
+  animation: pickerGlow 2200ms ease forwards;
+}
+@keyframes pickerGlow {
+  0%   { background-color: transparent; }
+  10%  { background-color: var(--chart-yellow-100); }
+  35%  { background-color: var(--chart-yellow-100); }
+  100% { background-color: transparent; }
+}
+
+/* ============================================================
+   FOOTER ROW — skip tour (subordinated escape hatch)
+   ============================================================ */
+.footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.footer-row .skip {
+  background: transparent;
+  border: none;
+  color: var(--muted-foreground);
+  font-family: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  padding: 4px 6px;
+}
+.footer-row .skip:hover { color: var(--foreground); }
+.footer-row .back {
+  background: transparent;
+  border: 1px solid var(--border);
+  font-family: inherit;
+  font-size: 12px;
+  height: 28px;
+  padding: 0 12px;
+  color: var(--foreground);
+}
+.footer-row .back:hover { background: var(--secondary); }
+.footer-row .back:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+   PROTOTYPE / TOAST
+   ============================================================ */
+.prototype-badge {
+  position: fixed;
+  bottom: 10px; left: 10px;
+  background: var(--foreground);
+  color: var(--card);
+  font-size: 10px; padding: 4px 8px;
+  z-index: 50; font-weight: 500;
+  letter-spacing: 0.4px;
+  opacity: 0.85;
+}
+.toast {
+  position: fixed;
+  bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--foreground);
+  color: var(--card);
+  padding: 12px 18px;
+  font-size: 13px;
+  opacity: 0;
+  transition: opacity 200ms ease, transform 200ms ease;
+  z-index: 200;
+}
+.toast.is-show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Stage hidden by default; one visible at a time */
+.stage-card { display: none; }
+.stage-card.is-active { display: grid; }
+.stage-card.stage-5.is-active { display: block; }
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .stage-card { grid-template-columns: 1fr; }
+  .s-preview { min-height: 320px; }
+  .s5-head { grid-template-columns: 1fr; }
+  .picker-grid { grid-template-columns: repeat(2, 1fr); }
+  .platform-tile.tile-other { grid-column: span 2; }
+  .acc-row { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar">
+    <div class="brand">
+      <span><span class="brand-icon"></span>edrone</span>
+      <span style="color: var(--muted-foreground); font-size: 12px;">⤢</span>
+    </div>
+
+    <a class="nav-item is-active" href="#"><span class="nav-icon">◉</span> Live<span class="nav-chevron"></span></a>
+    <a class="nav-item" href="#"><span class="nav-icon">✉</span> Inbox<span class="nav-chevron">0</span></a>
+    <a class="nav-item" href="#"><span class="nav-icon">✎</span> Newsletter<span class="nav-chevron">▾</span></a>
+    <a class="nav-item" href="#"><span class="nav-icon">⤳</span> Automations<span class="nav-chevron">▾</span></a>
+    <a class="nav-item" href="#"><span class="nav-icon">▤</span> Onsites<span class="nav-chevron">▾</span></a>
+    <a class="nav-item" href="#"><span class="nav-icon">★</span> Reviews<span class="nav-chevron">▾</span></a>
+    <a class="nav-item is-disabled" href="#"><span class="nav-icon">⚇</span> Customers<span class="nav-lock">🔒</span></a>
+    <a class="nav-item" href="#"><span class="nav-icon">⚙</span> Resources<span class="nav-chevron">▾</span></a>
+    <a class="nav-item is-disabled" href="#"><span class="nav-icon">▦</span> Reports<span class="nav-lock">🔒</span></a>
+    <a class="nav-item" href="#"><span class="nav-icon">💬</span> AI Sales Chat</a>
+    <a class="nav-item" href="#"><span class="nav-icon">▥</span> AI Banner Generator</a>
+
+    <div class="workspace-card">
+      <div class="ws-name">soitalian.pl</div>
+      <div class="ws-id" id="wsStatus">Setup · 1 of 5</div>
+      <div class="ws-progress"><span id="wsProgress" style="width: 20%;"></span></div>
+    </div>
+  </aside>
+
+  <!-- ===== MAIN ===== -->
+  <main class="main">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div class="search">
+        <span style="font-size: 14px;">🔍</span>
+        <span>Search</span>
+      </div>
+      <div class="topbar-icons">
+        <button class="sys-status" id="sysStatus" title="Click to preview the integrated view">
+          <span style="font-size: 12px;">◯</span>
+          <span>Not integrated</span>
+        </button>
+        <button class="icon-btn">🔔<span class="dot-badge">1</span></button>
+        <button class="icon-btn">⚙</button>
+        <button class="icon-btn">M</button>
+      </div>
+    </div>
+
+    <!-- PAGE HEADER -->
+    <div class="page-header">
+      <h1 class="page-title" id="pageTitle">Almost live</h1>
+      <span class="page-meta">soitalian.pl · prepared by edrone AI</span>
+    </div>
+
+    <!-- STEPPER -->
+    <div class="stepper" id="stepper">
+      <button class="step is-current" data-step="1">
+        <span class="step-dot">1</span>
+        <span class="step-label">Emails</span>
+      </button>
+      <button class="step" data-step="2">
+        <span class="step-dot">2</span>
+        <span class="step-label">Popups</span>
+      </button>
+      <button class="step" data-step="3">
+        <span class="step-dot">3</span>
+        <span class="step-label">Social proof</span>
+      </button>
+      <button class="step" data-step="4">
+        <span class="step-dot">4</span>
+        <span class="step-label">Database</span>
+      </button>
+      <button class="step" data-step="5">
+        <span class="step-dot">5</span>
+        <span class="step-label">Integrate</span>
+      </button>
+    </div>
+
+    <!-- =========================================================
+         STAGE 1 — EMAIL AUTOMATIONS
+         ========================================================= -->
+    <section class="stage-card stage-1 is-active is-shown" data-stage="1">
+      <div class="s-left">
+        <div class="s-eyebrow">
+          <span class="step-pill">STEP 1 OF 5</span>
+          <span>EMAIL AUTOMATIONS</span>
+        </div>
+        <h2 class="s-amaze">7 emails. Already written in your store's voice.</h2>
+        <p class="s-pain" id="stage1-pain">
+          70% of shoppers browse, then leave — without buying, without subscribing.
+          I noticed which products caught their eye at soitalian.pl, and wrote a
+          gentle follow-up in your storefront's voice — so they come back to the
+          item they paused on.
+        </p>
+
+        <div class="journey" id="stage1-journey">
+          <div class="journey-step"><span class="js-icon">👤</span>Shopper pauses on a dress</div>
+          <span class="journey-arrow">→</span>
+          <div class="journey-step is-edrone"><span class="js-icon">🤖</span>I send a follow-up</div>
+          <span class="journey-arrow">→</span>
+          <div class="journey-step is-end"><span class="js-icon">🛒</span>Returns &amp; orders</div>
+        </div>
+
+        <div class="cta-row">
+          <button class="btn-primary btn-continue" data-action="continue">Show me popups <span>→</span></button>
+          <span class="cta-hint">4 more to see</span>
+        </div>
+      </div>
+
+      <div class="s-preview">
+        <div class="email-deck-wrap">
+          <div class="email-deck" id="emailDeck">
+
+            <article class="email-card" data-id="viewed" data-pos="front">
+              <div class="email-mock-badge">Ready to send</div>
+              <div class="em-logo">so italian</div>
+              <div class="em-image" style="background-image: url(assets/prod-1.jpg);"></div>
+              <div class="em-headline">Czekamy<br>na Ciebie</div>
+              <div class="em-body">Wracaj do tej sukienki, którą oglądałaś.<br>Mamy ją jeszcze w Twoim rozmiarze.</div>
+              <div class="em-cta">Zobacz produkt</div>
+            </article>
+
+            <article class="email-card" data-id="cart" data-pos="peek1">
+              <div class="email-mock-badge">Ready to send</div>
+              <div class="em-logo">so italian</div>
+              <div class="em-image" style="background-image: url(assets/prod-2.jpg);"></div>
+              <div class="em-headline">Dokończ<br>zakupy</div>
+              <div class="em-body">Twój koszyk wciąż czeka.<br>Wracamy z drobnym przypomnieniem.</div>
+              <div class="em-cta">Wróć do koszyka</div>
+            </article>
+
+            <article class="email-card" data-id="restore" data-pos="peek2">
+              <div class="email-mock-badge">Ready to send</div>
+              <div class="em-logo">so italian</div>
+              <div class="em-image" style="background-image: url(assets/prod-3.jpg);"></div>
+              <div class="em-headline">Dawno Cię<br>u nas nie było</div>
+              <div class="em-body">Mamy nowości w Twoim stylu.<br>Wracaj, gdy znajdziesz chwilę.</div>
+              <div class="em-cta">Zobacz nowości</div>
+            </article>
+
+            <article class="email-card" data-id="welcome" data-pos="peek3">
+              <div class="email-mock-badge">Ready to send</div>
+              <div class="em-logo">so italian</div>
+              <div class="em-image" style="background-image: url(assets/prod-4.jpg);"></div>
+              <div class="em-headline">Witaj<br>w SO ITALIAN</div>
+              <div class="em-body">Odbierz −10% na pierwsze zakupy.<br>Bez minimum zamówienia.</div>
+              <div class="em-cta">Skorzystaj z kodu</div>
+            </article>
+
+            <article class="email-card" data-id="reviews" data-pos="peek4">
+              <div class="email-mock-badge">Ready to send</div>
+              <div class="em-logo">so italian</div>
+              <div class="em-image" style="background-image: url(assets/prod-5.jpg);"></div>
+              <div class="em-headline">Jak Ci się<br>podobało?</div>
+              <div class="em-body">Twoja opinia pomaga innym wybierać.<br>Wystaw ocenę w 30 sekund.</div>
+              <div class="em-cta">Wystaw opinię</div>
+            </article>
+
+            <article class="email-card" data-id="cross" data-pos="peek5">
+              <div class="email-mock-badge">Ready to send</div>
+              <div class="em-logo">so italian</div>
+              <div class="em-image" style="background-image: url(assets/prod-6.jpg);"></div>
+              <div class="em-headline">Dla Ciebie<br>specjalnie</div>
+              <div class="em-body">Wybraliśmy rzeczy pasujące<br>do tego, co kupiłaś.</div>
+              <div class="em-cta">Zobacz polecane</div>
+            </article>
+
+            <article class="email-card" data-id="winback" data-pos="peek6">
+              <div class="email-mock-badge">Ready to send</div>
+              <div class="em-logo">so italian</div>
+              <div class="em-image" style="background-image: url(assets/prod-7.jpg);"></div>
+              <div class="em-headline">Tęsknimy</div>
+              <div class="em-body">6 miesięcy minęło.<br>Wracaj z −15% na całe zakupy.</div>
+              <div class="em-cta">Odbierz rabat</div>
+            </article>
+
+          </div>
+
+          <div class="deck-controls">
+            <span class="deck-meta" id="deckMeta">Now showing: <strong>Viewed products</strong></span>
+            <span class="deck-hint">Click any card to bring it forward</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         STAGE 2 — ONSITE POPUPS
+         ========================================================= -->
+    <section class="stage-card stage-2" data-stage="2">
+      <div class="s-left">
+        <div class="s-eyebrow">
+          <span class="step-pill">STEP 2 OF 5</span>
+          <span>ONSITE POPUPS</span>
+        </div>
+        <h2 class="s-amaze">A popup that catches shoppers before they leave — and grows your list.</h2>
+        <p class="s-pain">
+          Paid traffic costs money. Most of it walks out without giving you their email.
+          I show a popup at the right moment — when intent is highest — and ask once,
+          for one thing.
+        </p>
+
+        <div class="journey">
+          <div class="journey-step"><span class="js-icon">👤</span>Shopper about to leave</div>
+          <span class="journey-arrow">→</span>
+          <div class="journey-step is-edrone"><span class="js-icon">💌</span>I show the popup</div>
+          <span class="journey-arrow">→</span>
+          <div class="journey-step is-end"><span class="js-icon">✉</span>Email collected</div>
+        </div>
+
+        <div class="cta-row">
+          <button class="btn-primary btn-continue" data-action="continue">Show me social proof <span>→</span></button>
+          <span class="cta-hint">3 more to see</span>
+        </div>
+      </div>
+
+      <div class="s-preview">
+        <div class="store-mock">
+          <div class="sm-nav">
+            <span class="sm-brand">so italian</span>
+            <span>Shop</span><span>Lookbook</span><span>About</span>
+          </div>
+          <div class="sm-hero"></div>
+          <div class="popup-overlay">
+            <div class="popup-card">
+              <button class="pc-close">×</button>
+              <div class="pc-eyebrow">soitalian.pl</div>
+              <div class="pc-headline">Dołącz i odbierz<br>−10% na pierwsze zakupy</div>
+              <input class="pc-input" placeholder="Twój email" disabled>
+              <button class="pc-cta">Zapisz mnie</button>
+              <div class="pc-foot">Bez spamu. Wypisz się jednym kliknięciem.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         STAGE 3 — SOCIAL PROOF
+         ========================================================= -->
+    <section class="stage-card stage-3" data-stage="3">
+      <div class="s-left">
+        <div class="s-eyebrow">
+          <span class="step-pill">STEP 3 OF 5</span>
+          <span>SOCIAL PROOF</span>
+        </div>
+        <h2 class="s-amaze">A first-time visitor sees others bought — and stops hesitating.</h2>
+        <p class="s-pain">
+          A shopper landing on an empty-feeling store wonders if anyone trusts it.
+          I show recent activity in the corner — quietly, only when it helps —
+          so doubt fades and the cart wins.
+        </p>
+
+        <div class="journey">
+          <div class="journey-step"><span class="js-icon">👤</span>Hesitant first-time visitor</div>
+          <span class="journey-arrow">→</span>
+          <div class="journey-step is-edrone"><span class="js-icon">⚡</span>I show a recent order</div>
+          <span class="journey-arrow">→</span>
+          <div class="journey-step is-end"><span class="js-icon">🛒</span>Trust → click</div>
+        </div>
+
+        <div class="cta-row">
+          <button class="btn-primary btn-continue" data-action="continue">Show me database tools <span>→</span></button>
+          <span class="cta-hint">2 more to see</span>
+        </div>
+      </div>
+
+      <div class="s-preview">
+        <div class="store-mock">
+          <div class="sm-nav">
+            <span class="sm-brand">so italian</span>
+            <span>Shop</span><span>Lookbook</span><span>About</span>
+          </div>
+          <div class="sm-hero" style="background-image: url(assets/prod-5.jpg);"></div>
+          <div class="proof-bubble">
+            <div class="pb-thumb"></div>
+            <div class="pb-text">
+              <span class="pb-name">Anna z Krakowa</span>
+              <span class="pb-meta">kupiła sukienkę · 4 min temu</span>
+            </div>
+            <span class="pb-dot"></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         STAGE 4 — DATABASE / IDENTIFICATION SEQUENCE
+         ========================================================= -->
+    <section class="stage-card stage-4" data-stage="4">
+      <div class="s-left">
+        <div class="s-eyebrow">
+          <span class="step-pill">STEP 4 OF 5</span>
+          <span>DATABASE ACTIVATION</span>
+        </div>
+        <h2 class="s-amaze">Anonymous browsers turn into shoppers I can email.</h2>
+        <p class="s-pain">
+          Most of your traffic is anonymous — even people who signed up months ago
+          may be silent today. I run a quiet 7-message sequence (consent, privacy,
+          secure shopping) every 30 days. The click identifies them — and unlocks
+          every other automation.
+        </p>
+
+        <div class="journey">
+          <div class="journey-step"><span class="js-icon">👻</span>Anonymous browser</div>
+          <span class="journey-arrow">→</span>
+          <div class="journey-step is-edrone"><span class="js-icon">📬</span>I send non-marketing emails</div>
+          <span class="journey-arrow">→</span>
+          <div class="journey-step is-end"><span class="js-icon">👤</span>Identified shopper</div>
+        </div>
+
+        <div class="cta-row">
+          <button class="btn-primary btn-continue" data-action="continue">I'm ready — let's integrate <span>→</span></button>
+          <span class="cta-hint">last step</span>
+        </div>
+      </div>
+
+      <div class="s-preview">
+        <div class="seq-mock">
+          <div class="seq-row is-sent">
+            <span class="seq-num">1</span>
+            <div>
+              <div class="seq-title">Privacy policy update</div>
+              <div class="seq-sub">Non-marketing · ensures consent</div>
+            </div>
+            <span class="seq-day">Day 1</span>
+          </div>
+          <div class="seq-row is-sent">
+            <span class="seq-num">2</span>
+            <div>
+              <div class="seq-title">How we keep shopping secure</div>
+              <div class="seq-sub">Non-marketing · builds trust</div>
+            </div>
+            <span class="seq-day">Day 8</span>
+          </div>
+          <div class="seq-row">
+            <span class="seq-num">3</span>
+            <div>
+              <div class="seq-title">Confirm your preferences</div>
+              <div class="seq-sub">Identifies open / click</div>
+            </div>
+            <span class="seq-day">Day 15</span>
+          </div>
+          <div class="seq-row">
+            <span class="seq-num">…</span>
+            <div>
+              <div class="seq-title">4 more, every 30 days</div>
+              <div class="seq-sub">Quiet, useful — never pushy</div>
+            </div>
+            <span class="seq-day">Days 22–60</span>
+          </div>
+          <div class="seq-result">
+            <span class="sr-icon">→</span>
+            <span class="sr-text">
+              <strong>One click identifies them.</strong>
+              <span class="sr-sub">Now every other automation knows who they are.</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         STAGE 5 — INTEGRATE (final, full-width)
+         ========================================================= -->
+    <section class="stage-card stage-5" data-stage="5">
+
+      <div class="s5-head">
+        <div>
+          <div class="s-eyebrow">
+            <span class="step-pill">STEP 5 OF 5</span>
+            <span>READY TO GO LIVE</span>
+          </div>
+          <h2 class="s5-amaze">Everything's ready for soitalian.pl. One connection turns it on.</h2>
+          <p class="s5-pain">
+            I built the automations, designed the emails, and primed the onsite layers.
+            They start the moment your store is connected.
+          </p>
+          <div class="s5-time-row">
+            <span class="time-pill">⏱ ~5 min · no engineer needed</span>
+            <span>Cancel anytime in settings</span>
+          </div>
+        </div>
+        <div></div>
+      </div>
+
+      <!-- ACCUMULATOR — recall of what was shown -->
+      <div class="accumulator">
+        <div class="acc-eyebrow">What's prepared and waiting</div>
+        <div class="acc-row">
+          <div class="acc-tile">
+            <span class="at-check">✓</span>
+            <div class="at-name">7 email automations</div>
+            <div class="at-detail">Cart, browse, welcome, win-back — styled to soitalian.pl</div>
+          </div>
+          <div class="acc-tile">
+            <span class="at-check">✓</span>
+            <div class="at-name">Newsletter popup</div>
+            <div class="at-detail">Catches shoppers before they leave</div>
+          </div>
+          <div class="acc-tile">
+            <span class="at-check">✓</span>
+            <div class="at-name">Social proof layer</div>
+            <div class="at-detail">Recent activity shown to hesitant visitors</div>
+          </div>
+          <div class="acc-tile">
+            <span class="at-check">✓</span>
+            <div class="at-name">Database activation</div>
+            <div class="at-detail">7-message ID sequence keeps your list alive</div>
+          </div>
+          <div class="acc-tile acc-tile-more">
+            <span class="at-check">+</span>
+            <div class="at-name">30+ more, ready to go</div>
+            <div class="at-detail">Reviews, SMS, WhatsApp, AI Sales Chat, AI Banners — all unlock when you connect</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PICKER — single dominant CTA section -->
+      <div class="picker-section" id="pickerSection">
+        <div class="picker-head">
+          <h3 class="picker-title">Pick your platform to start</h3>
+          <span class="picker-sub">I'll import products, fonts and brand colors</span>
+        </div>
+        <div class="picker-grid">
+          <button class="platform-tile tile-shopify"  data-action="Connect Shopify">shopify</button>
+          <button class="platform-tile tile-woo"      data-action="Connect WooCommerce">WooCommerce</button>
+          <button class="platform-tile tile-shoper"   data-action="Connect Shoper">shoper</button>
+          <button class="platform-tile tile-presta"   data-action="Connect PrestaShop">PRESTASHOP</button>
+          <button class="platform-tile tile-idosell"  data-action="Connect IdoSell">IdoSell.</button>
+          <button class="platform-tile tile-nuvem"    data-action="Connect Nuvemshop">nuvemshop</button>
+          <button class="platform-tile tile-other"    data-action="Talk to edrone expert">Other platform — talk to your edrone expert</button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- FOOTER ROW -->
+    <div class="footer-row" id="footerRow">
+      <button class="back" id="backBtn" disabled>← Back</button>
+      <button class="skip" id="skipBtn">Skip the tour — take me to integration</button>
+    </div>
+
+  </main>
+</div>
+
+<div class="toast" id="toast">Action logged.</div>
+<div class="prototype-badge">PROTOTYPE · non-integrated · staged · 2026-05-15</div>
+
+<script>
+// ============================================================
+// State machine for 5-stage tour
+// ============================================================
+const totalStages = 5;
+let currentStage = 1;
+
+const stages   = document.querySelectorAll('.stage-card');
+const steps    = document.querySelectorAll('#stepper .step');
+const backBtn  = document.getElementById('backBtn');
+const skipBtn  = document.getElementById('skipBtn');
+const wsStatus   = document.getElementById('wsStatus');
+const wsProgress = document.getElementById('wsProgress');
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('is-show');
+  clearTimeout(t._h);
+  t._h = setTimeout(() => t.classList.remove('is-show'), 1800);
+}
+
+function showStage(n, direction = 'forward') {
+  if (n < 1 || n > totalStages) return;
+
+  // Update stepper
+  steps.forEach((step, i) => {
+    const num = i + 1;
+    step.classList.toggle('is-current', num === n);
+    step.classList.toggle('is-done',    num < n);
+    const dot = step.querySelector('.step-dot');
+    dot.textContent = num < n ? '✓' : num;
+  });
+
+  // Fade out current
+  const current = document.querySelector('.stage-card.is-active');
+  const next    = document.querySelector(`.stage-card[data-stage="${n}"]`);
+  if (current === next) return;
+
+  if (current) {
+    current.classList.add('is-fading');
+    current.classList.remove('is-shown');
+    setTimeout(() => {
+      current.classList.remove('is-active', 'is-fading');
+      next.classList.add('is-active', 'is-entering');
+      // next frame
+      requestAnimationFrame(() => {
+        next.classList.remove('is-entering');
+        next.classList.add('is-shown');
+      });
+      // Stage 5 picker flash
+      if (n === 5) {
+        const picker = document.getElementById('pickerSection');
+        if (picker) {
+          setTimeout(() => {
+            picker.classList.add('is-highlighted');
+            setTimeout(() => picker.classList.remove('is-highlighted'), 2300);
+          }, 280);
+        }
+      }
+    }, 230);
+  } else {
+    next.classList.add('is-active', 'is-shown');
+  }
+
+  // Back button state
+  backBtn.disabled = (n === 1);
+  // Skip button only useful before stage 5
+  skipBtn.style.visibility = (n === 5) ? 'hidden' : 'visible';
+
+  // Sidebar setup progress
+  wsStatus.textContent = `Setup · ${n} of ${totalStages}`;
+  wsProgress.style.width = `${(n / totalStages) * 100}%`;
+
+  currentStage = n;
+  // Smooth scroll to top of stage
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Continue buttons
+document.querySelectorAll('[data-action="continue"]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (currentStage < totalStages) showStage(currentStage + 1);
+  });
+});
+
+// Back
+backBtn.addEventListener('click', () => {
+  if (currentStage > 1) showStage(currentStage - 1, 'backward');
+});
+
+// Skip
+skipBtn.addEventListener('click', () => showStage(5));
+
+// Stepper click — jump to any stage (also serves as breadcrumb)
+steps.forEach(step => {
+  step.addEventListener('click', () => {
+    const n = parseInt(step.dataset.step, 10);
+    if (n && n !== currentStage) showStage(n);
+  });
+});
+
+// Platform tile clicks — toast (prototype)
+document.querySelectorAll('[data-action]').forEach(el => {
+  if (el.dataset.action === 'continue') return;
+  el.addEventListener('click', (e) => {
+    e.preventDefault();
+    toast('Open: ' + el.dataset.action);
+  });
+});
+
+// ============================================================
+// Stage 1 — 7-email deck: click any peeked card to bring it forward.
+// Narrative (pain + journey) updates to match the front card.
+// ============================================================
+const emails = [
+  {
+    id: 'viewed', name: 'Viewed products',
+    pain: "70% of shoppers browse, then leave — without buying, without subscribing. I noticed which products caught their eye at soitalian.pl, and wrote a gentle follow-up in your storefront's voice — so they come back to the item they paused on.",
+    journey: [
+      { i: '👤', t: 'Shopper pauses on a dress' },
+      { i: '🤖', t: 'I send a follow-up', kind: 'edrone' },
+      { i: '🛒', t: 'Returns & orders', kind: 'end' }
+    ]
+  },
+  {
+    id: 'cart', name: 'Abandoned cart',
+    pain: "Roughly 7 out of 10 carts are abandoned in the last 30 seconds — distraction, second thoughts, shipping shock. I bring back the exact items they left, one hour later (the proven sweet spot), in soitalian.pl's tone.",
+    journey: [
+      { i: '🛒', t: 'Shopper adds to cart, leaves' },
+      { i: '🤖', t: 'I remind them 1h later', kind: 'edrone' },
+      { i: '💳', t: 'Cart recovered', kind: 'end' }
+    ]
+  },
+  {
+    id: 'restore', name: 'Restore customer',
+    pain: "First-time buyers usually don't come back on their own — they simply forget. I watch for the 60-day silence and pick a new arrival from your catalog that matches the style they bought from soitalian.pl before.",
+    journey: [
+      { i: '👤', t: 'No visit for 60+ days' },
+      { i: '🤖', t: 'I send new arrivals in their style', kind: 'edrone' },
+      { i: '↩', t: 'Returns to shop', kind: 'end' }
+    ]
+  },
+  {
+    id: 'welcome', name: 'Welcome new subscribers',
+    pain: "A new signup is the warmest minute you'll ever get — and most stores miss it. I welcome them within the hour with a starter offer styled for a first-time soitalian.pl buyer, while curiosity is still high.",
+    journey: [
+      { i: '✉', t: 'New subscriber signs up' },
+      { i: '🤖', t: 'I welcome them with a starter offer', kind: 'edrone' },
+      { i: '🛍', t: 'First purchase', kind: 'end' }
+    ]
+  },
+  {
+    id: 'reviews', name: 'Post-purchase reviews',
+    pain: "Happy customers stay silent — but reviews are what convinces the next shopper to click 'Buy'. I ask the morning after delivery, in two clicks, in your tone — so soitalian.pl's product pages fill with proof.",
+    journey: [
+      { i: '📦', t: 'Order delivered' },
+      { i: '🤖', t: 'I ask for a quick review', kind: 'edrone' },
+      { i: '★', t: 'Stars on product page', kind: 'end' }
+    ]
+  },
+  {
+    id: 'cross', name: 'Recommendations',
+    pain: "Right after the first purchase, shoppers are most receptive — most stores stay quiet for weeks. I suggest matching pieces from your catalog, hand-picked to look good next to what they just bought from soitalian.pl.",
+    journey: [
+      { i: '🛍', t: 'Customer buys item A' },
+      { i: '🤖', t: 'I suggest matching items', kind: 'edrone' },
+      { i: '🛒', t: 'Order grows', kind: 'end' }
+    ]
+  },
+  {
+    id: 'winback', name: 'Win-back & loyalty',
+    pain: "Customers fade out quietly — you can't tell when they're slipping. I watch the silence and send a comeback offer right before six months, while soitalian.pl is still in their memory and a small discount is enough to win them back.",
+    journey: [
+      { i: '⏳', t: 'No purchase for 180 days' },
+      { i: '🤖', t: 'I send a comeback offer', kind: 'edrone' },
+      { i: '💛', t: 'Loyalty restored', kind: 'end' }
+    ]
+  }
+];
+
+const deck = document.getElementById('emailDeck');
+const orderIds = emails.map(e => e.id);
+const painEl    = document.getElementById('stage1-pain');
+const journeyEl = document.getElementById('stage1-journey');
+const deckMeta  = document.getElementById('deckMeta');
+
+function applyDeckPositions() {
+  orderIds.forEach((id, i) => {
+    const card = deck.querySelector(`[data-id="${id}"]`);
+    if (!card) return;
+    let pos;
+    if (i === 0) pos = 'front';
+    else if (i <= 6) pos = 'peek' + i;
+    else pos = 'hidden';
+    card.dataset.pos = pos;
+  });
+}
+
+function applyNarrative(email) {
+  painEl.textContent = email.pain;
+  deckMeta.innerHTML = `Now showing: <strong>${email.name}</strong>`;
+  let html = '';
+  email.journey.forEach((j, k) => {
+    const cls = j.kind === 'edrone' ? ' is-edrone' : (j.kind === 'end' ? ' is-end' : '');
+    html += `<div class="journey-step${cls}"><span class="js-icon">${j.i}</span>${j.t}</div>`;
+    if (k < email.journey.length - 1) {
+      html += '<span class="journey-arrow">→</span>';
+    }
+  });
+  journeyEl.innerHTML = html;
+}
+
+function bringToFront(id) {
+  const idx = orderIds.indexOf(id);
+  if (idx < 0 || idx === 0) return;
+  const [picked] = orderIds.splice(idx, 1);
+  orderIds.unshift(picked);
+  applyDeckPositions();
+  applyNarrative(emails.find(e => e.id === id));
+}
+
+if (deck) {
+  deck.addEventListener('click', (e) => {
+    const card = e.target.closest('.email-card');
+    if (!card || card.dataset.pos === 'front') return;
+    bringToFront(card.dataset.id);
+  });
+}
+
+// ============================================================
+// Sys-status pill — toggle between non-integrated and integrated
+// prototype views. Click once = jump to integrated; click there
+// = jump back here.
+// ============================================================
+const sysEl = document.getElementById('sysStatus');
+if (sysEl) {
+  sysEl.addEventListener('click', () => {
+    window.location.href = '2026-05-13_live-integrated-prototype.html';
+  });
+}
+
+// Typewriter intro for the page title (on initial load)
+(function intro() {
+  const titleEl = document.getElementById('pageTitle');
+  if (!titleEl) return;
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  async function typeText(text, speed) {
+    for (let i = 0; i < text.length; i++) {
+      titleEl.textContent = text.slice(0, i + 1);
+      await sleep(speed);
+    }
+  }
+  async function deleteText(speed) {
+    let t = titleEl.textContent;
+    while (t.length > 0) {
+      t = t.slice(0, -1);
+      titleEl.textContent = t;
+      await sleep(speed);
+    }
+  }
+  async function run() {
+    titleEl.textContent = '';
+    await sleep(280);
+    await typeText('Hello,', 70);
+    await sleep(520);
+    await deleteText(22);
+    await sleep(120);
+    await typeText('Your edrone is ready', 50);
+    await sleep(680);
+    await deleteText(20);
+    await sleep(120);
+    await typeText('Almost live', 80);
+    await sleep(600);
+    titleEl.classList.add('is-done');
+  }
+  run();
+})();
+</script>
+</body>
+</html>
